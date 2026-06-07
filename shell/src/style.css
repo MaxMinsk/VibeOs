@@ -1,0 +1,697 @@
+:root {
+  --menubar-h: 28px;
+  --font-sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sys);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#desktop {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  /* Wallpaper: layered gradients (offline, no external assets). */
+  background:
+    radial-gradient(120% 80% at 75% 15%, rgba(255, 180, 220, 0.55), transparent 60%),
+    radial-gradient(110% 90% at 20% 85%, rgba(120, 170, 255, 0.55), transparent 55%),
+    linear-gradient(160deg, #6a4ea0 0%, #8a5fb0 40%, #c66fa0 100%);
+  color: #fff;
+}
+
+/* ---------------- Menu bar ---------------- */
+.menubar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--menubar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.18);
+  z-index: 10000;
+}
+
+.menubar-left,
+.menubar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menubar-logo {
+  font-size: 14px;
+}
+
+.menubar-app {
+  font-weight: 700;
+}
+
+.menubar-item {
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+.menubar-clock {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.95;
+}
+
+.menubar-search {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.9;
+}
+.menubar-search:hover {
+  opacity: 1;
+}
+
+.agent-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.agent-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: 0 0 6px rgba(255, 95, 87, 0.8);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.agent-status[data-state="online"] .agent-dot {
+  background: #28c840;
+  box-shadow: 0 0 6px rgba(40, 200, 64, 0.8);
+}
+
+/* ---------------- Window layer ---------------- */
+.window-layer {
+  position: absolute;
+  inset: var(--menubar-h) 0 0 0;
+  overflow: hidden;
+}
+
+/* While dragging/resizing, stop iframes from swallowing pointer events. */
+.window-layer.interacting iframe {
+  pointer-events: none;
+}
+
+/* ---------------- Window ---------------- */
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  min-height: 180px;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35),
+    0 0 0 0.5px rgba(0, 0, 0, 0.18);
+  color: #1d1d1f;
+}
+
+.window.hidden {
+  display: none;
+}
+
+.window.maximized {
+  border-radius: 0;
+}
+
+.window.active {
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.45),
+    0 0 0 0.5px rgba(0, 0, 0, 0.22);
+}
+
+.titlebar {
+  position: relative;
+  height: 38px;
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #f6f6f7, #ececee);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.12);
+  cursor: default;
+}
+
+.window:not(.active) .titlebar {
+  background: #f4f4f5;
+}
+
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tl {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  padding: 0;
+  cursor: pointer;
+}
+
+.tl-close {
+  background: #ff5f57;
+}
+.tl-min {
+  background: #febc2e;
+}
+.tl-max {
+  background: #28c840;
+}
+
+.window:not(.active) .tl {
+  background: #d4d4d6;
+}
+
+.win-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3c4149;
+  pointer-events: none;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.window:not(.active) .win-title {
+  color: #9a9ea6;
+}
+
+.window-body {
+  flex: 1 1 auto;
+  position: relative;
+  background: #fff;
+}
+
+.window-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.window-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(2px);
+  color: #6e6e73;
+  font-size: 13px;
+}
+
+.window-overlay.visible {
+  display: flex;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.12);
+  border-top-color: #0a84ff;
+  animation: vibe-spin 0.8s linear infinite;
+}
+
+@keyframes vibe-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Resize handles */
+.rh {
+  position: absolute;
+  z-index: 2;
+}
+.rh-n,
+.rh-s {
+  left: 6px;
+  right: 6px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.rh-e,
+.rh-w {
+  top: 6px;
+  bottom: 6px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.rh-n {
+  top: -3px;
+}
+.rh-s {
+  bottom: -3px;
+}
+.rh-e {
+  right: -3px;
+}
+.rh-w {
+  left: -3px;
+}
+.rh-ne,
+.rh-nw,
+.rh-se,
+.rh-sw {
+  width: 12px;
+  height: 12px;
+  z-index: 3;
+}
+.rh-nw {
+  top: -3px;
+  left: -3px;
+  cursor: nwse-resize;
+}
+.rh-ne {
+  top: -3px;
+  right: -3px;
+  cursor: nesw-resize;
+}
+.rh-sw {
+  bottom: -3px;
+  left: -3px;
+  cursor: nesw-resize;
+}
+.rh-se {
+  bottom: -3px;
+  right: -3px;
+  cursor: nwse-resize;
+}
+
+.window.maximized .rh {
+  display: none;
+}
+
+/* ---------------- Dock ---------------- */
+.dock {
+  position: fixed;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border: 0.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  z-index: 9000;
+}
+
+.dock-apps {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.dock-divider {
+  width: 0;
+  align-self: stretch;
+  margin: 4px 2px;
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  display: none;
+}
+
+.dock-tray {
+  display: none;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.dock-tray.has-items {
+  display: flex;
+}
+
+.dock-tray.has-items + .dock-divider,
+.dock-divider:has(+ .dock-tray.has-items) {
+  display: block;
+}
+
+.tray-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 140px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tray-item:hover {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.tray-glyph {
+  font-size: 18px;
+}
+
+.tray-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.dock-item:hover {
+  transform: translateY(-8px) scale(1.12);
+}
+
+.dock-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.dock-tooltip {
+  position: absolute;
+  bottom: 64px;
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.dock-item:hover .dock-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------------- Spotlight (⌘K) ---------------- */
+.spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: none;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 16vh;
+  background: rgba(0, 0, 0, 0.18);
+}
+.spotlight.visible {
+  display: flex;
+}
+.spotlight-box {
+  width: 600px;
+  max-width: 92vw;
+  background: rgba(245, 245, 247, 0.86);
+  backdrop-filter: saturate(180%) blur(30px);
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  color: #1d1d1f;
+}
+.spotlight-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.spotlight-icon {
+  font-size: 18px;
+  opacity: 0.6;
+}
+.spotlight-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 20px;
+  color: #1d1d1f;
+}
+.spotlight-list {
+  max-height: 46vh;
+  overflow: auto;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+.spotlight-list:empty {
+  display: none;
+}
+.spot-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+.spot-row.selected {
+  background: #0a84ff;
+  color: #fff;
+}
+.spot-glyph {
+  font-size: 22px;
+  width: 28px;
+  text-align: center;
+}
+.spot-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.spot-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.spot-sub {
+  font-size: 12px;
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spot-row.selected .spot-sub {
+  opacity: 0.85;
+}
+.spot-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.5;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.spot-row.selected .spot-tag {
+  background: rgba(255, 255, 255, 0.25);
+  opacity: 0.9;
+}
+.spot-row.generate .spot-glyph {
+  color: #0a84ff;
+}
+
+/* ---------------- Launchpad ---------------- */
+.launchpad {
+  position: fixed;
+  inset: 0;
+  z-index: 19000;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 48px;
+  background: rgba(40, 30, 60, 0.55);
+  backdrop-filter: saturate(160%) blur(40px);
+  -webkit-backdrop-filter: saturate(160%) blur(40px);
+}
+.launchpad.visible {
+  display: flex;
+}
+.launchpad-search {
+  margin-bottom: 36px;
+}
+.launchpad-input {
+  width: 260px;
+  text-align: center;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  outline: none;
+}
+.launchpad-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+.launchpad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 120px);
+  gap: 28px 24px;
+  justify-content: center;
+  width: min(1000px, 90vw);
+  overflow: auto;
+  padding-bottom: 60px;
+}
+.lp-tile {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #fff;
+}
+.lp-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s;
+}
+.lp-tile:hover .lp-icon {
+  transform: scale(1.08);
+}
+.lp-name {
+  font-size: 13px;
+  text-align: center;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------- Window animations ---------------- */
+@keyframes win-open {
+  from { opacity: 0; transform: scale(0.94) translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes win-close {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: scale(0.93) translateY(6px); }
+}
+@keyframes win-min {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: scale(0.28) translateY(46vh); }
+}
+.window { animation: win-open 0.18s ease both; transform-origin: center bottom; }
+.window.closing { animation: win-close 0.16s ease forwards; pointer-events: none; }
+.window.minimizing { animation: win-min 0.24s cubic-bezier(0.4, 0, 0.6, 1) forwards; }
+.window.restoring { animation: win-open 0.2s ease both; }
+
+/* ---------------- Dock running indicator ---------------- */
+.dock-run {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: transparent;
+  transform: translateX(-50%);
+  transition: background 0.15s;
+}
+.dock-item.running .dock-run {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+}
+
+/* ---------------- Error overlay ---------------- */
+.overlay-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 20px;
+}
+.overlay-error-icon { font-size: 34px; }
+.overlay-error-title { font-weight: 600; color: #3c4149; }
+.overlay-error-msg {
+  font-size: 12px;
+  color: #8a8f98;
+  max-width: 80%;
+  word-break: break-word;
+}
+.overlay-retry {
+  margin-top: 6px;
+  appearance: none;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  background: #0a84ff;
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.overlay-retry:hover { filter: brightness(1.06); }

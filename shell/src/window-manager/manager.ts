@@ -1,0 +1,285 @@
+import type { AppDef } from "../apps";
+import { WindowView } from "./window-view";
+import type { AgentClient } from "../agent/client";
+import type { ServerMessage } from "../agent/protocol";
+import {
+  type Geometry,
+  type WindowState,
+  DEFAULT_W,
+  DEFAULT_H,
+} from "./types";
+
+let seq = 0;
+const nextId = () => `win-${++seq}`;
+
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "app";
+
+/**
+ * Owns all windows: lifecycle, z-index/focus, minimize tray. The single source
+ * of truth is each WindowState (shared by reference with its WindowView).
+ */
+export interface WindowManagerHooks {
+  /** Title of the focused app (or null when none). */
+  onActiveChange?: (title: string | null) => void;
+  /** Set of appIds that currently have at least one open window. */
+  onRunningChange?: (running: Set<string>) => void;
+}
+
+export class WindowManager {
+  private readonly views = new Map<string, WindowView>();
+  private nextZ = 100;
+  private activeId: string | null = null;
+  private cascade = 0;
+
+  constructor(
+    private readonly layer: HTMLElement,
+    /** Container in the dock where minimized windows appear. */
+    private readonly tray: HTMLElement,
+    private readonly agent: AgentClient,
+    private readonly hooks: WindowManagerHooks = {},
+  ) {
+    // Route interaction events coming from app iframes back to the agent.
+    window.addEventListener("message", (e) => this.onIframeMessage(e));
+  }
+
+  /** Dock click: focus an existing window for this app, else open one. */
+  activateApp(app: AppDef): string {
+    let target: WindowView | null = null;
+    for (const v of this.views.values()) {
+      if (v.state.appId !== app.id) continue;
+      if (!target || v.state.zIndex > target.state.zIndex) target = v;
+    }
+    if (target) {
+      this.focus(target.state.id);
+      return target.state.id;
+    }
+    return this.launch(app);
+  }
+
+  /** Open a window for a dock app (uses its curated brief, falls back to name). */
+  launch(app: AppDef): string {
+    return this.open({
+      appId: app.id,
+      title: app.name,
+      glyph: app.glyph,
+      brief: app.brief ?? app.name,
+    });
+  }
+
+  /** Open a window from a free-text brief (Spotlight, M8). */
+  launchBrief(brief: string, title = brief, glyph = "✦"): string {
+    return this.open({ appId: slug(brief), title, glyph, brief });
+  }
+
+  private open(init: {
+    appId: string;
+    title: string;
+    glyph: string;
+    brief: string;
+  }): string {
+    const id = nextId();
+    const state: WindowState = {
+      id,
+      appId: init.appId,
+      title: init.title,
+      glyph: init.glyph,
+      geometry: this.nextGeometry(),
+      zIndex: ++this.nextZ,
+      mode: "normal",
+      brief: init.brief,
+      sessionId: null,
+    };
+
+    const view = new WindowView(state, this.layer, {
+      onFocus: (wid) => this.focus(wid),
+      onClose: (wid) => this.close(wid),
+      onMinimize: (wid) => this.minimize(wid),
+      onToggleMaximize: (wid) => this.toggleMaximize(wid),
+    });
+    this.views.set(id, view);
+    view.mount();
+    this.focus(id);
+
+    // Wire agent responses for this window, then request the initial UI.
+    this.agent.on(id, (msg) => this.onServerMessage(msg));
+    this.agent.send({ type: "launch", windowId: id, brief: state.brief });
+    return id;
+  }
+
+  private onServerMessage(msg: ServerMessage) {
+    const view = this.views.get(msg.windowId);
+    if (!view) return;
+    if (msg.type === "status") {
+      if (msg.state === "thinking") view.setLoading(true);
+      if (msg.state === "error")
+        view.showError(msg.message ?? "error", () => this.retry(msg.windowId));
+    } else if (msg.type === "render") {
+      if (msg.meta?.name) {
+        view.setTitle(msg.meta.name, msg.meta.glyph);
+        if (this.activeId === msg.windowId) this.emitChange();
+      }
+      view.state.sessionId = msg.sessionId;
+      view.setContent(msg.srcdoc);
+    } else if (msg.type === "error") {
+      view.showError(msg.message, () => this.retry(msg.windowId));
+    }
+  }
+
+  /** Re-request the initial UI for a window after an error. */
+  retry(id: string) {
+    const view = this.views.get(id);
+    if (!view) return;
+    view.setLoading(true, `Generating ${view.state.title}…`);
+    this.agent.send({ type: "launch", windowId: id, brief: view.state.brief });
+  }
+
+  private onIframeMessage(e: MessageEvent) {
+    const data = e.data;
+    if (!data || data.type !== "vibe-event") return;
+    const view = this.views.get(data.windowId);
+    if (!view) return;
+    view.setLoading(true, "Working…");
+    this.agent.send({
+      type: "event",
+      windowId: data.windowId,
+      sessionId: view.state.sessionId,
+      brief: view.state.brief,
+      action: data.event?.action,
+      detail: data.event,
+    });
+  }
+
+  /** Forget the active window's cached app and regenerate it in place (⌘J). */
+  regenerateActive() {
+    if (!this.activeId) return;
+    const view = this.views.get(this.activeId);
+    if (!view) return;
+    view.state.sessionId = null;
+    view.setLoading(true, `Regenerating ${view.state.title}…`);
+    this.agent.send({
+      type: "launch",
+      windowId: view.state.id,
+      brief: view.state.brief,
+      force: true,
+    });
+  }
+
+  focus(id: string) {
+    const view = this.views.get(id);
+    if (!view) return;
+    if (view.state.mode === "minimized") this.restore(id);
+    view.state.zIndex = ++this.nextZ;
+    view.applyZ();
+    if (this.activeId !== id) {
+      this.activeId = id;
+      for (const [vid, v] of this.views) v.setActive(vid === id);
+    }
+    this.emitChange();
+  }
+
+  close(id: string) {
+    const view = this.views.get(id);
+    if (!view) return;
+    this.views.delete(id);
+    this.removeTrayItem(id);
+    this.agent.send({ type: "close", windowId: id });
+    this.agent.off(id);
+    view.playClose(() => view.destroy());
+    if (this.activeId === id) {
+      this.activeId = null;
+      this.focusTopmost();
+    }
+    this.emitChange();
+  }
+
+  minimize(id: string) {
+    const view = this.views.get(id);
+    if (!view || view.state.mode === "minimized") return;
+    view.state.mode = "minimized";
+    view.playMinimize(() => {});
+    this.addTrayItem(view.state);
+    if (this.activeId === id) {
+      this.activeId = null;
+      this.focusTopmost();
+    }
+    this.emitChange();
+  }
+
+  restore(id: string) {
+    const view = this.views.get(id);
+    if (!view || view.state.mode !== "minimized") return;
+    view.state.mode = "normal";
+    view.playRestore();
+    this.removeTrayItem(id);
+  }
+
+  toggleMaximize(id: string) {
+    const view = this.views.get(id);
+    if (!view) return;
+    const s = view.state;
+    if (s.mode === "maximized") {
+      if (s.prevGeometry) s.geometry = { ...s.prevGeometry };
+      s.mode = "normal";
+      view.setMaximized(false);
+    } else {
+      s.prevGeometry = { ...s.geometry };
+      const b = this.layer.getBoundingClientRect();
+      s.geometry = { x: 0, y: 0, w: b.width, h: b.height };
+      s.mode = "maximized";
+      view.setMaximized(true);
+    }
+    view.applyGeometry();
+    this.focus(id);
+  }
+
+  // ---- helpers ----
+  private emitChange() {
+    const running = new Set<string>();
+    for (const v of this.views.values()) running.add(v.state.appId);
+    this.hooks.onRunningChange?.(running);
+    const title = this.activeId
+      ? (this.views.get(this.activeId)?.state.title ?? null)
+      : null;
+    this.hooks.onActiveChange?.(title);
+  }
+
+  private focusTopmost() {
+    let top: WindowView | null = null;
+    for (const v of this.views.values()) {
+      if (v.state.mode === "minimized") continue;
+      if (!top || v.state.zIndex > top.state.zIndex) top = v;
+    }
+    if (top) this.focus(top.state.id);
+  }
+
+  private nextGeometry(): Geometry {
+    const b = this.layer.getBoundingClientRect();
+    const step = 28;
+    const off = (this.cascade % 6) * step;
+    this.cascade++;
+    const x = Math.max(20, Math.round((b.width - DEFAULT_W) / 2 - 60) + off);
+    const y = Math.max(20, 40 + off);
+    return { x, y, w: DEFAULT_W, h: DEFAULT_H };
+  }
+
+  private addTrayItem(state: WindowState) {
+    const pill = document.createElement("button");
+    pill.className = "tray-item";
+    pill.dataset.id = state.id;
+    pill.title = state.title;
+    pill.innerHTML = `<span class="tray-glyph">${state.glyph}</span><span class="tray-title">${state.title}</span>`;
+    pill.addEventListener("click", () => this.focus(state.id));
+    this.tray.appendChild(pill);
+    this.tray.classList.add("has-items");
+  }
+
+  private removeTrayItem(id: string) {
+    this.tray.querySelector(`.tray-item[data-id="${id}"]`)?.remove();
+    if (!this.tray.children.length) this.tray.classList.remove("has-items");
+  }
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VibeOs Design System — Preview</title>
+    <link rel="stylesheet" href="./design-system.css" />
+    <style>
+      body { padding: 24px; background: var(--vibe-bg-elev); }
+      .demo { max-width: 920px; margin: 0 auto; }
+      .demo h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+        color: var(--vibe-text-3); margin: 28px 0 10px; }
+      .panel { background: var(--vibe-bg); border: .5px solid var(--vibe-border);
+        border-radius: 12px; overflow: hidden; box-shadow: var(--vibe-shadow); }
+      .pad { padding: 16px; }
+      .frame { height: 260px; }
+    </style>
+  </head>
+  <body>
+    <div class="demo">
+      <h2>Buttons</h2>
+      <div class="panel pad vibe-row" style="flex-wrap:wrap;gap:10px">
+        <button class="vibe-btn" data-action="x">Default</button>
+        <button class="vibe-btn vibe-btn--primary" data-action="x">Primary</button>
+        <button class="vibe-btn vibe-btn--danger" data-action="x">Danger</button>
+        <button class="vibe-btn vibe-btn--ghost" data-action="x">Ghost</button>
+        <button class="vibe-btn" disabled>Disabled</button>
+        <span class="vibe-segmented">
+          <button class="selected">Day</button><button>Week</button><button>Month</button>
+        </span>
+        <span class="vibe-badge">Badge</span>
+        <span class="vibe-badge vibe-badge--accent">Accent</span>
+        <span class="vibe-badge vibe-badge--green">Online</span>
+        <span class="vibe-badge vibe-badge--danger">Error</span>
+      </div>
+
+      <h2>Inputs</h2>
+      <div class="panel pad">
+        <div class="vibe-field">
+          <label class="vibe-label">Title</label>
+          <input class="vibe-input" placeholder="Untitled note" data-action="x" />
+        </div>
+        <div class="vibe-field">
+          <label class="vibe-label">Body</label>
+          <textarea class="vibe-textarea" placeholder="Write something…"></textarea>
+        </div>
+        <div class="vibe-search"><span>🔍</span><input placeholder="Search" /></div>
+      </div>
+
+      <h2>Split view: sidebar + list + content</h2>
+      <div class="panel frame">
+        <div class="vibe-app">
+          <div class="vibe-toolbar">
+            <span class="vibe-title">Finder</span>
+            <span class="vibe-spacer"></span>
+            <button class="vibe-btn vibe-btn--ghost" data-action="x">＋</button>
+          </div>
+          <div class="vibe-split">
+            <nav class="vibe-sidebar">
+              <div class="vibe-sidebar-group">Favorites</div>
+              <div class="vibe-sidebar-item selected">📁 Documents</div>
+              <div class="vibe-sidebar-item">📁 Downloads</div>
+              <div class="vibe-sidebar-item">📁 Desktop</div>
+            </nav>
+            <div class="vibe-content" style="padding:0">
+              <div class="vibe-list">
+                <div class="vibe-list-row selected">
+                  <span>📄</span>
+                  <div><div class="vibe-row-title">report.pdf</div>
+                  <div class="vibe-row-sub">2.4 MB · Today</div></div>
+                </div>
+                <div class="vibe-list-row">
+                  <span>📄</span>
+                  <div><div class="vibe-row-title">budget.xlsx</div>
+                  <div class="vibe-row-sub">18 KB · Yesterday</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Tabs + Table + Card</h2>
+      <div class="panel">
+        <div class="vibe-tabs">
+          <button class="vibe-tab selected">Overview</button>
+          <button class="vibe-tab">Details</button>
+        </div>
+        <div class="pad">
+          <div class="vibe-card" style="margin-bottom:12px">
+            <strong>System status</strong>
+            <p class="vibe-muted">Everything is operating normally.</p>
+          </div>
+          <table class="vibe-table">
+            <thead><tr><th>Name</th><th>Size</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>kernel.img</td><td>4.1 MB</td><td><span class="vibe-badge vibe-badge--green">ok</span></td></tr>
+              <tr><td>cache.db</td><td>912 KB</td><td><span class="vibe-badge vibe-badge--danger">stale</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>Terminal & Launchpad grid</h2>
+      <div class="vibe-row" style="align-items:stretch;gap:12px">
+        <div class="panel" style="flex:1">
+          <div class="vibe-terminal"><span class="prompt">vibe$</span> ls -la
+Permission denied. Or maybe not. Who's to say, really.
+<span class="prompt">vibe$</span> ▍</div>
+        </div>
+        <div class="panel pad" style="flex:1">
+          <div class="vibe-grid">
+            <div class="vibe-tile"><span class="glyph">🗂</span>Finder</div>
+            <div class="vibe-tile"><span class="glyph">📝</span>Notes</div>
+            <div class="vibe-tile"><span class="glyph">🧭</span>Safari</div>
+            <div class="vibe-tile"><span class="glyph">⌘</span>Terminal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

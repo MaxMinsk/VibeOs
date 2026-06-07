@@ -1,0 +1,27 @@
+<!doctype html>
+<!--
+  iframe document template for VibeOs app windows.
+  The Agent Bridge fills the placeholders before setting iframe.srcdoc:
+    {{STYLE}}    → contents of design-system.css (inlined; srcdoc has no base URL)
+    {{CONTENT}}  → sanitized agent-generated HTML fragment (app body)
+    {{BRIDGE}}   → contents of bridge.js (event capture → postMessage to shell)
+  Sandbox is set on the <iframe> element by the shell: sandbox="allow-scripts".
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Allow inline scripts/styles for self-contained interactive apps, but
+         NO network (default-src 'none' → no fetch/XHR/connect): the sandbox +
+         this CSP mean app JS can only touch its own DOM. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; script-src 'unsafe-inline' 'unsafe-eval';"
+    />
+    <style>{{STYLE}}</style>
+  </head>
+  <body>
+    {{CONTENT}}
+    <script>{{BRIDGE}}</script>
+  </body>
+</html>

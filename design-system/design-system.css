@@ -1,0 +1,505 @@
+/* ============================================================================
+   VibeOs Design System  —  macOS-style component library
+   Used inside every app iframe. The agent builds app UI ONLY from these classes.
+   All interactive elements carry data-action so the iframe bridge can report them.
+   ============================================================================ */
+
+:root {
+  /* Palette */
+  --vibe-accent: #0a84ff;
+  --vibe-accent-press: #0060df;
+  --vibe-bg: #ffffff;
+  --vibe-bg-elev: #f5f5f7;
+  --vibe-bg-sidebar: #ececef;
+  --vibe-text: #1d1d1f;
+  --vibe-text-2: #6e6e73;
+  --vibe-text-3: #9a9aa0;
+  --vibe-border: rgba(0, 0, 0, 0.12);
+  --vibe-border-strong: rgba(0, 0, 0, 0.22);
+  --vibe-hover: rgba(0, 0, 0, 0.05);
+  --vibe-selected: rgba(10, 132, 255, 0.14);
+  --vibe-danger: #ff3b30;
+  --vibe-green: #28c840;
+  --vibe-yellow: #febc2e;
+
+  /* Shape & type */
+  --vibe-radius-sm: 5px;
+  --vibe-radius: 8px;
+  --vibe-radius-lg: 12px;
+  --vibe-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    system-ui, sans-serif;
+  --vibe-mono: "SF Mono", ui-monospace, "Menlo", "Consolas", monospace;
+  --vibe-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --vibe-bg: #1e1e1e;
+    --vibe-bg-elev: #2a2a2c;
+    --vibe-bg-sidebar: #242426;
+    --vibe-text: #f5f5f7;
+    --vibe-text-2: #a1a1a6;
+    --vibe-text-3: #6e6e73;
+    --vibe-border: rgba(255, 255, 255, 0.14);
+    --vibe-border-strong: rgba(255, 255, 255, 0.24);
+    --vibe-hover: rgba(255, 255, 255, 0.07);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: var(--vibe-font);
+  font-size: 13px;
+  color: var(--vibe-text);
+  background: var(--vibe-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- App shell: standard layout primitives -------------------------------- */
+.vibe-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.vibe-split {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.vibe-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+/* ---- Toolbar -------------------------------------------------------------- */
+.vibe-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 44px;
+  background: var(--vibe-bg-elev);
+  border-bottom: 0.5px solid var(--vibe-border);
+}
+
+.vibe-toolbar .vibe-spacer {
+  flex: 1 1 auto;
+}
+
+.vibe-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---- Buttons -------------------------------------------------------------- */
+.vibe-btn {
+  appearance: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--vibe-text);
+  background: var(--vibe-bg);
+  border: 0.5px solid var(--vibe-border-strong);
+  border-radius: var(--vibe-radius-sm);
+  padding: 5px 12px;
+  min-height: 26px;
+  box-shadow: var(--vibe-shadow);
+  cursor: pointer;
+  transition: background 0.12s, filter 0.12s;
+}
+
+.vibe-btn:hover {
+  background: var(--vibe-bg-elev);
+}
+
+.vibe-btn:active {
+  filter: brightness(0.94);
+}
+
+.vibe-btn--primary {
+  color: #fff;
+  background: var(--vibe-accent);
+  border-color: transparent;
+}
+
+.vibe-btn--primary:hover {
+  background: var(--vibe-accent);
+  filter: brightness(1.05);
+}
+
+.vibe-btn--primary:active {
+  background: var(--vibe-accent-press);
+}
+
+.vibe-btn--danger {
+  color: #fff;
+  background: var(--vibe-danger);
+  border-color: transparent;
+}
+
+.vibe-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.vibe-btn--ghost:hover {
+  background: var(--vibe-hover);
+}
+
+.vibe-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---- Segmented control ---------------------------------------------------- */
+.vibe-segmented {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--vibe-hover);
+  border-radius: var(--vibe-radius);
+}
+
+.vibe-segmented button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--vibe-text);
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.vibe-segmented button[aria-selected="true"],
+.vibe-segmented button.selected {
+  background: var(--vibe-bg);
+  box-shadow: var(--vibe-shadow);
+}
+
+/* ---- Inputs --------------------------------------------------------------- */
+.vibe-input,
+.vibe-textarea,
+.vibe-select {
+  font: inherit;
+  color: var(--vibe-text);
+  background: var(--vibe-bg);
+  border: 0.5px solid var(--vibe-border-strong);
+  border-radius: var(--vibe-radius-sm);
+  padding: 6px 9px;
+  width: 100%;
+  outline: none;
+}
+
+.vibe-input:focus,
+.vibe-textarea:focus,
+.vibe-select:focus {
+  border-color: var(--vibe-accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
+}
+
+.vibe-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.vibe-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vibe-hover);
+  border-radius: 7px;
+  padding: 4px 9px;
+}
+
+.vibe-search input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  color: var(--vibe-text);
+  width: 100%;
+}
+
+.vibe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.vibe-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vibe-text-2);
+}
+
+/* ---- Sidebar -------------------------------------------------------------- */
+.vibe-sidebar {
+  width: 220px;
+  flex: 0 0 auto;
+  background: var(--vibe-bg-sidebar);
+  border-right: 0.5px solid var(--vibe-border);
+  padding: 10px 8px;
+  overflow: auto;
+}
+
+.vibe-sidebar-group {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vibe-text-3);
+  padding: 10px 8px 4px;
+}
+
+.vibe-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--vibe-text);
+  cursor: pointer;
+}
+
+.vibe-sidebar-item:hover {
+  background: var(--vibe-hover);
+}
+
+.vibe-sidebar-item.selected {
+  background: var(--vibe-accent);
+  color: #fff;
+}
+
+/* ---- Lists ---------------------------------------------------------------- */
+.vibe-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.vibe-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 0.5px solid var(--vibe-border);
+  cursor: pointer;
+}
+
+.vibe-list-row:hover {
+  background: var(--vibe-hover);
+}
+
+.vibe-list-row.selected {
+  background: var(--vibe-selected);
+}
+
+.vibe-list-row .vibe-row-title {
+  font-weight: 600;
+}
+
+.vibe-list-row .vibe-row-sub {
+  color: var(--vibe-text-2);
+  font-size: 12px;
+}
+
+/* ---- Cards ---------------------------------------------------------------- */
+.vibe-card {
+  background: var(--vibe-bg);
+  border: 0.5px solid var(--vibe-border);
+  border-radius: var(--vibe-radius-lg);
+  padding: 16px;
+  box-shadow: var(--vibe-shadow);
+}
+
+.vibe-card + .vibe-card {
+  margin-top: 12px;
+}
+
+/* ---- Table ---------------------------------------------------------------- */
+.vibe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.vibe-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--vibe-text-2);
+  padding: 7px 10px;
+  border-bottom: 0.5px solid var(--vibe-border);
+  background: var(--vibe-bg-elev);
+}
+
+.vibe-table td {
+  padding: 7px 10px;
+  border-bottom: 0.5px solid var(--vibe-border);
+}
+
+.vibe-table tr:hover td {
+  background: var(--vibe-hover);
+}
+
+/* ---- Tabs ----------------------------------------------------------------- */
+.vibe-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 0.5px solid var(--vibe-border);
+  padding: 0 8px;
+}
+
+.vibe-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--vibe-text-2);
+  padding: 9px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.vibe-tab.selected {
+  color: var(--vibe-text);
+  border-bottom-color: var(--vibe-accent);
+}
+
+/* ---- Badges & chips ------------------------------------------------------- */
+.vibe-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vibe-hover);
+  color: var(--vibe-text-2);
+}
+
+.vibe-badge--accent {
+  background: var(--vibe-selected);
+  color: var(--vibe-accent);
+}
+
+.vibe-badge--green {
+  background: rgba(40, 200, 64, 0.16);
+  color: #1e9e36;
+}
+
+.vibe-badge--danger {
+  background: rgba(255, 59, 48, 0.16);
+  color: var(--vibe-danger);
+}
+
+/* ---- Menu / dropdown ------------------------------------------------------ */
+.vibe-menu {
+  background: var(--vibe-bg);
+  border: 0.5px solid var(--vibe-border);
+  border-radius: var(--vibe-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  padding: 5px;
+  min-width: 180px;
+}
+
+.vibe-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.vibe-menu-item:hover {
+  background: var(--vibe-accent);
+  color: #fff;
+}
+
+.vibe-menu-sep {
+  height: 0.5px;
+  background: var(--vibe-border);
+  margin: 5px 0;
+}
+
+/* ---- Terminal / code ------------------------------------------------------ */
+.vibe-terminal {
+  font-family: var(--vibe-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: #1b1b1e;
+  color: #e6e6e6;
+  padding: 12px;
+  height: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.vibe-terminal .prompt {
+  color: var(--vibe-green);
+}
+
+/* Inline command input that blends into the terminal scrollback. */
+.vibe-terminal input {
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  width: 70%;
+  caret-color: var(--vibe-green);
+}
+
+/* ---- Misc helpers --------------------------------------------------------- */
+.vibe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vibe-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vibe-muted {
+  color: var(--vibe-text-2);
+}
+.vibe-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--vibe-text-3);
+  text-align: center;
+}
+.vibe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 14px;
+}
+.vibe-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--vibe-radius);
+  cursor: pointer;
+  text-align: center;
+}
+.vibe-tile:hover {
+  background: var(--vibe-hover);
+}
+.vibe-tile .glyph {
+  font-size: 34px;
+}

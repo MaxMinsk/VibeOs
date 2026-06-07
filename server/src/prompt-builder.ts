@@ -1,0 +1,52 @@
+import { resolve } from "node:path";
+import { PROMPTS_DIR, DESIGN_DIR } from "./config.js";
+import { freshFile } from "./fs-cache.js";
+
+// System prompt = base rules + Design System contract. Read fresh (mtime-cached)
+// so edits to the prompt / DS apply without a server restart.
+export function getSystemPrompt(): string {
+  const baseRules = freshFile(resolve(PROMPTS_DIR, "system.md"));
+  const dsContract = freshFile(resolve(DESIGN_DIR, "ds-prompt.md"));
+  return `${baseRules}\n\n---\n\n${dsContract}`;
+}
+
+/** Prompt for the very first render of an app, from a free-text brief. */
+export function buildLaunchPrompt(brief: string): string {
+  return [
+    "Generate the initial UI for this app. Honor the brief's type, content and",
+    "personality. Remember to end with the <!--vibe-meta ...--> comment.",
+    "",
+    `BRIEF: ${brief}`,
+  ].join("\n");
+}
+
+/** Prompt for a follow-up user action inside an already-open app (M4). */
+export function buildEventPrompt(action: string, detail: unknown): string {
+  return [
+    "The user interacted with the app. Update and return the full app UI body to",
+    "reflect this action, keeping prior state coherent. Do NOT include vibe-meta.",
+    "",
+    `ACTION: ${action}`,
+    `DETAIL: ${JSON.stringify(detail)}`,
+  ].join("\n");
+}
+
+/**
+ * First interaction on a window that was opened from cache (no live session yet).
+ * Re-establishes context from the brief so the new session can continue.
+ */
+export function buildFirstEventPrompt(
+  brief: string,
+  action: string,
+  detail: unknown,
+): string {
+  return [
+    "Continue this app after a user action. First reconstruct the app from its",
+    "brief, then apply the action and return the full updated UI body.",
+    "Do NOT include vibe-meta.",
+    "",
+    `BRIEF: ${brief}`,
+    `ACTION: ${action}`,
+    `DETAIL: ${JSON.stringify(detail)}`,
+  ].join("\n");
+}
