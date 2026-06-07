@@ -245,7 +245,8 @@ export class WindowView {
     let startX = 0,
       startY = 0,
       originX = 0,
-      originY = 0;
+      originY = 0,
+      snap: Geometry | null = null;
 
     const onMove = (e: PointerEvent) => {
       const dx = e.clientX - startX;
@@ -256,12 +257,24 @@ export class WindowView {
       g.x = clamp(originX + dx, -g.w + 80, bounds.width - 80);
       g.y = clamp(originY + dy, 0, bounds.height - 36);
       this.applyGeometry();
+      // Edge snapping preview.
+      snap = computeSnap(e.clientX - bounds.left, e.clientY - bounds.top, bounds.width, bounds.height);
+      showSnapPreview(this.layer, snap);
     };
     const onUp = (e: PointerEvent) => {
       this.titlebar.releasePointerCapture(e.pointerId);
       this.titlebar.removeEventListener("pointermove", onMove);
       this.titlebar.removeEventListener("pointerup", onUp);
       this.layer.classList.remove("interacting");
+      showSnapPreview(this.layer, null);
+      if (snap) {
+        this.state.geometry = { ...snap };
+        this.state.mode = "normal";
+        this.setMaximized(false);
+        this.applyGeometry();
+        snap = null;
+      }
+      this.handlers.onCommit?.(this.state.id);
     };
 
     this.titlebar.addEventListener("pointerdown", (e) => {
@@ -308,6 +321,7 @@ export class WindowView {
         handle.removeEventListener("pointermove", onMove);
         handle.removeEventListener("pointerup", onUp);
         this.layer.classList.remove("interacting");
+        this.handlers.onCommit?.(this.state.id);
       };
 
       handle.addEventListener("pointerdown", (e) => {
@@ -334,4 +348,47 @@ function escapeHtml(s: string): string {
     /[&<>"]/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!,
   );
+}
+
+const EDGE = 16;
+
+/** Compute the snap target (layer-local) for a pointer near the layer edges. */
+function computeSnap(lx: number, ly: number, W: number, H: number): Geometry | null {
+  const top = ly < EDGE;
+  const left = lx < EDGE;
+  const right = lx > W - EDGE;
+  const upper = ly < H / 3;
+  const lower = ly > (H * 2) / 3;
+  if (top && !left && !right) return { x: 0, y: 0, w: W, h: H }; // maximize
+  if (left)
+    return upper
+      ? { x: 0, y: 0, w: W / 2, h: H / 2 }
+      : lower
+        ? { x: 0, y: H / 2, w: W / 2, h: H / 2 }
+        : { x: 0, y: 0, w: W / 2, h: H };
+  if (right)
+    return upper
+      ? { x: W / 2, y: 0, w: W / 2, h: H / 2 }
+      : lower
+        ? { x: W / 2, y: H / 2, w: W / 2, h: H / 2 }
+        : { x: W / 2, y: 0, w: W / 2, h: H };
+  return null;
+}
+
+function showSnapPreview(layer: HTMLElement, target: Geometry | null) {
+  let el = layer.querySelector<HTMLElement>(".snap-preview");
+  if (!target) {
+    if (el) el.classList.remove("visible");
+    return;
+  }
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "snap-preview";
+    layer.appendChild(el);
+  }
+  el.style.left = `${target.x}px`;
+  el.style.top = `${target.y}px`;
+  el.style.width = `${target.w}px`;
+  el.style.height = `${target.h}px`;
+  el.classList.add("visible");
 }

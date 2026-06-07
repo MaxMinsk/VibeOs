@@ -29,6 +29,8 @@ export interface WindowHandlers {
   onClose(id: string): void;
   onMinimize(id: string): void;
   onToggleMaximize(id: string): void;
+  /** Called after a drag/resize/snap settles (for persistence). */
+  onCommit?(id: string): void;
 }
 
 export const MIN_W = 280;

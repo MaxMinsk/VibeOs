@@ -792,3 +792,16 @@ body {
 .dock-icon--gen {
   background: linear-gradient(160deg, #b06ab3, #4568dc);
 }
+
+/* ---------------- Snap preview ---------------- */
+.snap-preview {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  border-radius: 12px;
+  background: rgba(10, 132, 255, 0.18);
+  border: 1.5px solid rgba(10, 132, 255, 0.6);
+  pointer-events: none;
+  transition: left 0.08s, top 0.08s, width 0.08s, height 0.08s;
+}
+.snap-preview.visible { display: block; }

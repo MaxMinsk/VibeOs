@@ -78,19 +78,17 @@ export class WindowManager {
     return this.open({ appId: slug(brief), title, glyph, brief });
   }
 
-  private open(init: {
-    appId: string;
-    title: string;
-    glyph: string;
-    brief: string;
-  }): string {
+  private open(
+    init: { appId: string; title: string; glyph: string; brief: string },
+    restore?: { geometry?: Geometry; mode?: WindowState["mode"] },
+  ): string {
     const id = nextId();
     const state: WindowState = {
       id,
       appId: init.appId,
       title: init.title,
       glyph: init.glyph,
-      geometry: this.nextGeometry(),
+      geometry: restore?.geometry ?? this.nextGeometry(),
       zIndex: ++this.nextZ,
       mode: "normal",
       brief: init.brief,
@@ -102,11 +100,13 @@ export class WindowManager {
       onClose: (wid) => this.close(wid),
       onMinimize: (wid) => this.minimize(wid),
       onToggleMaximize: (wid) => this.toggleMaximize(wid),
+      onCommit: () => this.persist(),
     });
     this.views.set(id, view);
     view.mount();
+    if (restore?.mode === "maximized") this.toggleMaximize(id);
     this.focus(id);
-    sound.open();
+    if (!restore) sound.open();
 
     // Wire agent responses for this window, then request the initial UI.
     this.agent.on(id, (msg) => this.onServerMessage(msg));
@@ -265,8 +265,52 @@ export class WindowManager {
     };
   }
 
+  // ---- session persistence ----
+  private persist() {
+    const wins = [...this.views.values()]
+      .filter((v) => v.state.mode !== "minimized")
+      .sort((a, b) => a.state.zIndex - b.state.zIndex)
+      .map((v) => ({
+        appId: v.state.appId,
+        title: v.state.title,
+        glyph: v.state.glyph,
+        brief: v.state.brief,
+        geometry: v.state.geometry,
+        mode: v.state.mode,
+      }));
+    try {
+      localStorage.setItem("vibe-session", JSON.stringify(wins));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Re-open the windows from the last session (cache hits make this instant). */
+  restoreSession() {
+    let saved: Array<{
+      appId: string;
+      title: string;
+      glyph: string;
+      brief: string;
+      geometry: Geometry;
+      mode: WindowState["mode"];
+    }>;
+    try {
+      saved = JSON.parse(localStorage.getItem("vibe-session") || "[]");
+    } catch {
+      return;
+    }
+    for (const w of saved) {
+      this.open(
+        { appId: w.appId, title: w.title, glyph: w.glyph, brief: w.brief },
+        { geometry: w.geometry, mode: w.mode === "maximized" ? "maximized" : undefined },
+      );
+    }
+  }
+
   // ---- helpers ----
   private emitChange() {
+    this.persist();
     const byApp = new Map<string, RunningApp>();
     for (const v of this.views.values()) {
       if (!byApp.has(v.state.appId))

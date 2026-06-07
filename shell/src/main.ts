@@ -84,6 +84,9 @@ desktop.appendChild(menubar.el);
 desktop.appendChild(windowLayer);
 desktop.appendChild(dock.el);
 
+// Re-open the previous session's windows (cache hits make this instant).
+wm.restoreSession();
+
 // ---- Desktop context menu (right-click empty desktop) ----
 windowLayer.addEventListener("contextmenu", (e) => {
   if (e.target !== windowLayer) return; // only on empty desktop, not windows
