@@ -20,7 +20,7 @@ export const APPS: AppDef[] = [
     glyph: "🗂",
     gradient: "linear-gradient(160deg,#3aa0ff,#1f6fe0)",
     brief:
-      "macOS Finder file browser: sidebar with Favorites (Desktop, Documents, Downloads, Applications) and iCloud, a main list/grid of believable files and folders with icons, sizes and modified dates, and a toolbar with view toggles and a search field. Clicking folders should navigate into them.",
+      "macOS Finder file browser: sidebar with Favorites (Desktop, Documents, Downloads, Applications) and iCloud, a main list/grid of believable files and folders with icons, sizes and modified dates, and a toolbar with view toggles and a search field. EVERY row must be clickable via data-action=\"open\" data-arg=\"<path>\": clicking a folder navigates into it (generate its contents); clicking a FILE opens a Quick Look preview of that file's contents (text, image, document, etc.) with a way back to the folder.",
   },
   {
     id: "notes",
@@ -44,7 +44,7 @@ export const APPS: AppDef[] = [
     glyph: "🧭",
     gradient: "linear-gradient(160deg,#5ed0ff,#0a84ff)",
     brief:
-      "Safari-style web browser: a toolbar with back/forward, an address bar (data-action=navigate), and a start page with favorites and a search field. Navigating to a URL should ask the agent to render that site.",
+      "Safari-style web browser: a toolbar with back/forward, a RELOAD button (data-action=\"reload\" data-arg=\"<current-url>\") to regenerate the current page, an address bar (an input with data-action=\"navigate\"), and a start page with favorites and a search field. Navigating to a URL or clicking a link renders that site; every link/post on a rendered page must be navigable.",
   },
   {
     id: "terminal",

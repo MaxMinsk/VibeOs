@@ -64,6 +64,12 @@ clickable and lead somewhere. Mark them `data-action="navigate"` with
 Plain `<a href="…">` links also work (the OS turns any link click into navigation),
 but never assume the real URL loads — on navigate YOU generate the next page.
 Keep the browser chrome (back/forward, address bar) and re-render the destination.
+Include a **reload** button `data-action="reload" data-arg="<current-url>"` that
+regenerates the current page.
+
+**Files (Finder etc.).** Make file rows openable too, not just folders:
+`data-action="open" data-arg="<path>"`. Opening a file generates a Quick Look
+preview of its contents (text, image, document…) with a way back to the listing.
 
 ## Metadata (first render only)
 

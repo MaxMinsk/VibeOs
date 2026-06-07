@@ -9,10 +9,15 @@ import {
   buildEventPrompt,
   buildFirstEventPrompt,
 } from "./prompt-builder.js";
-import { sanitizeApp, sanitizePreview } from "./sanitizer.js";
+import { sanitizeApp, sanitizePreview, type AppMeta } from "./sanitizer.js";
 import { buildSrcDoc, buildPreviewDoc } from "./wrapper.js";
 import { appCache } from "./app-cache.js";
+import { pageCache, pageKey } from "./page-cache.js";
 import type { ClientMessage, ServerMessage } from "./protocol.js";
+
+// Event actions that are read-only "drill-ins" worth caching by target
+// (browser pages, Finder folders/files). `reload` force-regenerates.
+const DRILL_ACTIONS = new Set(["navigate", "open", "reload"]);
 
 const app = Fastify({ logger: true });
 await app.register(cors, { origin: ALLOWED_ORIGINS });
@@ -60,49 +65,30 @@ app.register(async (f) => {
   });
 });
 
-async function handle(
-  msg: ClientMessage,
-  send: (m: ServerMessage) => void,
-  log: typeof app.log,
+type Send = (m: ServerMessage) => void;
+
+/** Send an already-rendered (cached) screen instantly. */
+function serveCached(
+  windowId: string,
+  html: string,
+  meta: AppMeta | null,
+  sessionId: string | null,
+  send: Send,
 ) {
-  if (msg.type === "close") return;
-  const windowId = msg.windowId;
+  send({ type: "render", windowId, srcdoc: buildSrcDoc(html), meta, sessionId, done: true });
+  send({ type: "status", windowId, state: "ready" });
+}
 
-  // --- Launch: serve from App Cache instantly when possible. ---
-  if (msg.type === "launch" && !msg.force) {
-    const cached = appCache.get(msg.brief);
-    if (cached) {
-      appCache.markOpened(cached.key);
-      send({
-        type: "render",
-        windowId,
-        srcdoc: buildSrcDoc(cached.html),
-        meta: { name: cached.name, glyph: cached.glyph, category: cached.category },
-        sessionId: null, // session is established lazily on first interaction
-        done: true,
-      });
-      send({ type: "status", windowId, state: "ready" });
-      log.info({ windowId, key: cached.key }, "served from cache");
-      return;
-    }
-  }
-
-  // --- Build prompt for a live generation turn. ---
-  let prompt: string;
-  let resumeSessionId: string | undefined;
-  if (msg.type === "launch") {
-    prompt = buildLaunchPrompt(msg.brief);
-  } else if (msg.sessionId) {
-    prompt = buildEventPrompt(msg.action, msg.detail);
-    resumeSessionId = msg.sessionId;
-  } else {
-    // Cache-opened window: no session yet — reconstruct from the brief.
-    prompt = buildFirstEventPrompt(msg.brief, msg.action, msg.detail);
-  }
-
+/** Generate a screen with live streaming and send it. Returns the result. */
+async function runAndRender(
+  windowId: string,
+  prompt: string,
+  resumeSessionId: string | undefined,
+  send: Send,
+  log: typeof app.log,
+): Promise<{ html: string; meta: ReturnType<typeof sanitizeApp>["meta"]; sessionId: string | null } | null> {
   send({ type: "status", windowId, state: "thinking" });
   try {
-    // Stream a throttled live preview of the UI as it generates.
     let acc = "";
     let lastFlush = 0;
     const onDelta = (chunk: string) => {
@@ -110,23 +96,82 @@ async function handle(
       const now = Date.now();
       if (now - lastFlush < 180 || acc.length < 40) return;
       lastFlush = now;
-      const html = sanitizePreview(acc);
-      if (html.trim()) send({ type: "chunk", windowId, srcdoc: buildPreviewDoc(html) });
+      const preview = sanitizePreview(acc);
+      if (preview.trim())
+        send({ type: "chunk", windowId, srcdoc: buildPreviewDoc(preview) });
     };
 
     const { text, sessionId } = await runApp({ prompt, resumeSessionId, onDelta });
     const { html, meta } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty render");
-    if (msg.type === "launch") appCache.put(msg.brief, html, meta);
-    const srcdoc = buildSrcDoc(html);
-    send({ type: "render", windowId, srcdoc, meta, sessionId, done: true });
+    send({ type: "render", windowId, srcdoc: buildSrcDoc(html), meta, sessionId, done: true });
     send({ type: "status", windowId, state: "ready" });
+    return { html, meta, sessionId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.error({ err, windowId }, "render failed");
     send({ type: "status", windowId, state: "error", message });
     send({ type: "error", windowId, message });
+    return null;
   }
+}
+
+async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
+  if (msg.type === "close") return;
+  const windowId = msg.windowId;
+
+  // --- Launch: serve from App Cache, else generate and cache. ---
+  if (msg.type === "launch") {
+    if (!msg.force) {
+      const cached = appCache.get(msg.brief);
+      if (cached) {
+        appCache.markOpened(cached.key);
+        serveCached(
+          windowId,
+          cached.html,
+          { name: cached.name, glyph: cached.glyph, category: cached.category },
+          null,
+          send,
+        );
+        log.info({ windowId, key: cached.key }, "app cache hit");
+        return;
+      }
+    }
+    const res = await runAndRender(windowId, buildLaunchPrompt(msg.brief), undefined, send, log);
+    if (res) appCache.put(msg.brief, res.html, res.meta);
+    return;
+  }
+
+  // --- Drill-in events (browser pages, Finder folders/files): page cache. ---
+  const arg = msg.detail && typeof msg.detail === "object"
+    ? String((msg.detail as { arg?: unknown }).arg ?? "")
+    : "";
+  if (DRILL_ACTIONS.has(msg.action) && arg) {
+    const key = pageKey(msg.brief, arg);
+    const force = msg.action === "reload";
+    if (!force) {
+      const cachedHtml = pageCache.get(key);
+      if (cachedHtml) {
+        serveCached(windowId, cachedHtml, null, msg.sessionId, send);
+        log.info({ windowId, key }, "page cache hit");
+        return;
+      }
+    }
+    // reload → re-render the same target as a navigation.
+    const action = msg.action === "reload" ? "navigate" : msg.action;
+    const prompt = msg.sessionId
+      ? buildEventPrompt(action, { ...(msg.detail as object), arg })
+      : buildFirstEventPrompt(msg.brief, action, { ...(msg.detail as object), arg });
+    const res = await runAndRender(windowId, prompt, msg.sessionId ?? undefined, send, log);
+    if (res) pageCache.put(key, res.html);
+    return;
+  }
+
+  // --- Generic event (no cache). ---
+  const prompt = msg.sessionId
+    ? buildEventPrompt(msg.action, msg.detail)
+    : buildFirstEventPrompt(msg.brief, msg.action, msg.detail);
+  await runAndRender(windowId, prompt, msg.sessionId ?? undefined, send, log);
 }
 
 try {
