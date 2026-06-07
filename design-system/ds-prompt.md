@@ -57,6 +57,14 @@ Example — a Finder row that navigates by generating the folder's contents:
 </div>
 ```
 
+**Web pages (browser).** When you render a website inside a browser app, make the
+page feel real: EVERY link, post title, button, menu item and result must be
+clickable and lead somewhere. Mark them `data-action="navigate"` with
+`data-arg="<url-or-page>"`, e.g. `<a data-action="navigate" data-arg="https://reddit.com/r/aww">r/aww</a>`.
+Plain `<a href="…">` links also work (the OS turns any link click into navigation),
+but never assume the real URL loads — on navigate YOU generate the next page.
+Keep the browser chrome (back/forward, address bar) and re-render the destination.
+
 ## Metadata (first render only)
 
 On the **first** render of a new app, end your output with a single HTML comment

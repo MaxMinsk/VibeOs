@@ -73,13 +73,17 @@ const SANITIZE_OPTS: sanitizeHtml.IOptions = {
       "autocomplete", "spellcheck", "width", "height", "list", "pattern",
       ...EVENT_ATTRS, ...SVG_ATTRS,
     ],
-    a: ["data-action", "data-arg", "class", "title", ...EVENT_ATTRS], // no href (network)
+    // href is kept so the bridge can read the navigation target; actual network
+    // navigation is blocked by the sandbox/CSP, the bridge intercepts the click.
+    a: ["href", "data-action", "data-arg", "class", "title", "style", ...EVENT_ATTRS],
     img: ["src", "alt", "class", "width", "height", "style"],
     canvas: ["width", "height", "id", "class", "style"],
   },
   // No network of any kind: only data: images. (Scripts can't fetch under CSP.)
+  // http(s) is allowed ONLY on <a href> so the bridge can read the target — the
+  // sandbox/CSP still block any real navigation or request.
   allowedSchemes: [],
-  allowedSchemesByTag: { img: ["data"] },
+  allowedSchemesByTag: { img: ["data"], a: ["http", "https"] },
   allowProtocolRelative: false,
   // allowedStyles omitted → all inline styles pass (sandboxed; DS still encouraged).
   parser: { lowerCaseTags: false }, // preserve camelCase SVG tags/attrs

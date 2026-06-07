@@ -42,9 +42,20 @@
   // Click on any element carrying data-action.
   document.addEventListener("click", function (e) {
     var t = e.target.closest("[data-action]");
-    if (!t) return;
-    e.preventDefault();
-    send(t.getAttribute("data-action"), t.getAttribute("data-arg"));
+    if (t) {
+      e.preventDefault();
+      send(t.getAttribute("data-action"), t.getAttribute("data-arg"));
+      return;
+    }
+    // Any link without an explicit data-action becomes a navigation (the agent
+    // generates the target). Real network navigation is blocked anyway.
+    var a = e.target.closest("a");
+    if (a) {
+      e.preventDefault();
+      var href = a.getAttribute("href");
+      var target = href && href !== "#" ? href : a.textContent.trim();
+      if (target) send("navigate", target);
+    }
   });
 
   // Submit on forms (or Enter inside a search box).
