@@ -26,6 +26,7 @@ export type ServerMessage =
       message?: string;
     }
   | { type: "chunk"; windowId: string; srcdoc: string }
+  | { type: "patch"; windowId: string; html: string }
   | {
       type: "render";
       windowId: string;

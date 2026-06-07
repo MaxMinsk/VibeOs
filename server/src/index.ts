@@ -86,25 +86,30 @@ async function runAndRender(
   resumeSessionId: string | undefined,
   send: Send,
   log: typeof app.log,
+  patchMode = false,
 ): Promise<{ html: string; meta: ReturnType<typeof sanitizeApp>["meta"]; sessionId: string | null } | null> {
   send({ type: "status", windowId, state: "thinking" });
   try {
+    // Stream a live preview only for full renders (a patch updates in place).
     let acc = "";
     let lastFlush = 0;
-    const onDelta = (chunk: string) => {
-      acc += chunk;
-      const now = Date.now();
-      if (now - lastFlush < 180 || acc.length < 40) return;
-      lastFlush = now;
-      const preview = sanitizePreview(acc);
-      if (preview.trim())
-        send({ type: "chunk", windowId, srcdoc: buildPreviewDoc(preview) });
-    };
+    const onDelta = patchMode
+      ? undefined
+      : (chunk: string) => {
+          acc += chunk;
+          const now = Date.now();
+          if (now - lastFlush < 180 || acc.length < 40) return;
+          lastFlush = now;
+          const preview = sanitizePreview(acc);
+          if (preview.trim())
+            send({ type: "chunk", windowId, srcdoc: buildPreviewDoc(preview) });
+        };
 
     const { text, sessionId } = await runApp({ prompt, resumeSessionId, onDelta });
     const { html, meta } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty render");
-    send({ type: "render", windowId, srcdoc: buildSrcDoc(html), meta, sessionId, done: true });
+    if (patchMode) send({ type: "patch", windowId, html });
+    else send({ type: "render", windowId, srcdoc: buildSrcDoc(html), meta, sessionId, done: true });
     send({ type: "status", windowId, state: "ready" });
     return { html, meta, sessionId };
   } catch (err) {
@@ -167,11 +172,11 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     return;
   }
 
-  // --- Generic event (no cache). ---
+  // --- Generic in-place event: patch the DOM (preserve focus/scroll). ---
   const prompt = msg.sessionId
     ? buildEventPrompt(msg.action, msg.detail)
     : buildFirstEventPrompt(msg.brief, msg.action, msg.detail);
-  await runAndRender(windowId, prompt, msg.sessionId ?? undefined, send, log);
+  await runAndRender(windowId, prompt, msg.sessionId ?? undefined, send, log, true);
 }
 
 try {

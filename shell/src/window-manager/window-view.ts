@@ -97,6 +97,19 @@ export class WindowView {
     this.el.style.zIndex = String(this.state.zIndex);
   }
 
+  private hasContent = false;
+
+  /** Show a busy indicator for an update: stream bar if content already exists
+   *  (keep it visible), else the full spinner overlay (first load). */
+  beginUpdate() {
+    if (this.hasContent) {
+      this.overlay.classList.remove("visible");
+      this.streambar.classList.add("visible");
+    } else {
+      this.setLoading(true);
+    }
+  }
+
   /** Progressive preview during streaming (no scripts/bridge yet). */
   setStreaming(srcdoc: string) {
     this.iframe.srcdoc = srcdoc;
@@ -111,6 +124,15 @@ export class WindowView {
     this.iframe.srcdoc = srcdoc;
     this.streambar.classList.remove("visible");
     this.setLoading(false);
+    this.hasContent = true;
+  }
+
+  /** Patch the current document in place (preserves focus/scroll). */
+  applyPatch(html: string) {
+    this.iframe.contentWindow?.postMessage({ type: "vibe-patch", html }, "*");
+    this.streambar.classList.remove("visible");
+    this.setLoading(false);
+    this.hasContent = true;
   }
 
   setLoading(loading: boolean, text = "Generating…") {
@@ -165,13 +187,28 @@ export class WindowView {
     this.afterAnim(done);
   }
 
-  playMinimize(done: () => void) {
-    this.el.classList.add("minimizing");
-    this.afterAnim(() => {
-      this.el.classList.remove("minimizing");
+  /** Genie-style minimize toward a target point (the dock). */
+  playMinimize(target: { x: number; y: number }, done: () => void) {
+    const r = this.el.getBoundingClientRect();
+    const dx = target.x - (r.left + r.width / 2);
+    const dy = target.y - (r.top + r.height / 2);
+    let fired = false;
+    const finish = () => {
+      if (fired) return;
+      fired = true;
       this.setHidden(true);
+      anim.cancel();
       done();
-    });
+    };
+    const anim = this.el.animate(
+      [
+        { transform: "translate(0,0) scale(1)", opacity: 1 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.08)`, opacity: 0.1 },
+      ],
+      { duration: 300, easing: "cubic-bezier(.4,0,.7,1)" },
+    );
+    anim.onfinish = finish;
+    setTimeout(finish, 360);
   }
 
   playRestore() {

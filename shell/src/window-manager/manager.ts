@@ -2,6 +2,7 @@ import type { AppDef } from "../apps";
 import { WindowView } from "./window-view";
 import type { AgentClient } from "../agent/client";
 import type { ServerMessage } from "../agent/protocol";
+import { sound } from "../desktop/sound";
 import {
   type Geometry,
   type WindowState,
@@ -104,6 +105,7 @@ export class WindowManager {
     this.views.set(id, view);
     view.mount();
     this.focus(id);
+    sound.open();
 
     // Wire agent responses for this window, then request the initial UI.
     this.agent.on(id, (msg) => this.onServerMessage(msg));
@@ -115,11 +117,13 @@ export class WindowManager {
     const view = this.views.get(msg.windowId);
     if (!view) return;
     if (msg.type === "status") {
-      if (msg.state === "thinking") view.setLoading(true);
+      if (msg.state === "thinking") view.beginUpdate();
       if (msg.state === "error")
         view.showError(msg.message ?? "error", () => this.retry(msg.windowId));
     } else if (msg.type === "chunk") {
       view.setStreaming(msg.srcdoc);
+    } else if (msg.type === "patch") {
+      view.applyPatch(msg.html);
     } else if (msg.type === "render") {
       if (msg.meta?.name) {
         view.setTitle(msg.meta.name, msg.meta.glyph);
@@ -145,7 +149,7 @@ export class WindowManager {
     if (!data || data.type !== "vibe-event") return;
     const view = this.views.get(data.windowId);
     if (!view) return;
-    view.setLoading(true, "Working…");
+    view.beginUpdate();
     this.agent.send({
       type: "event",
       windowId: data.windowId,
@@ -201,6 +205,7 @@ export class WindowManager {
     this.removeTrayItem(id);
     this.agent.send({ type: "close", windowId: id });
     this.agent.off(id);
+    sound.close();
     view.playClose(() => view.destroy());
     if (this.activeId === id) {
       this.activeId = null;
@@ -213,7 +218,8 @@ export class WindowManager {
     const view = this.views.get(id);
     if (!view || view.state.mode === "minimized") return;
     view.state.mode = "minimized";
-    view.playMinimize(() => {});
+    sound.minimize();
+    view.playMinimize(this.minimizeTarget(), () => {});
     this.addTrayItem(view.state);
     if (this.activeId === id) {
       this.activeId = null;
@@ -247,6 +253,15 @@ export class WindowManager {
     }
     view.applyGeometry();
     this.focus(id);
+  }
+
+  /** Where minimized windows fly to (the dock tray / bottom-centre). */
+  private minimizeTarget(): { x: number; y: number } {
+    const tr = this.tray.getBoundingClientRect();
+    return {
+      x: tr.width ? tr.left + tr.width / 2 : window.innerWidth / 2,
+      y: window.innerHeight - 24,
+    };
   }
 
   // ---- helpers ----

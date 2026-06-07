@@ -96,11 +96,113 @@
     send(el.getAttribute("data-action"), el.getAttribute("data-arg") || el.value);
   });
 
-  // Commands from the shell (e.g. show a spinner) — reserved for later use.
+  // ---- In-place DOM patch (preserves focus/selection/scroll) --------------
+  function keyOf(n) {
+    return n.nodeType === 1 && n.id ? n.id : null;
+  }
+  function syncAttrs(from, to) {
+    var ta = to.attributes, fa = from.attributes, i, a;
+    for (i = ta.length - 1; i >= 0; i--) {
+      a = ta[i];
+      if (from.getAttribute(a.name) !== a.value) from.setAttribute(a.name, a.value);
+    }
+    for (i = fa.length - 1; i >= 0; i--) {
+      a = fa[i];
+      if (!to.hasAttribute(a.name)) from.removeAttribute(a.name);
+    }
+  }
+  function morphNode(from, to, active) {
+    if (from.nodeType !== 1) {
+      if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue;
+      return;
+    }
+    if (from.tagName === "SCRIPT") return; // never re-run / disturb scripts
+    syncAttrs(from, to);
+    var tag = from.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+      // Don't clobber a field the user is editing.
+      if (from !== active) {
+        if (typeof to.value === "string" && from.value !== to.value)
+          from.value = to.value;
+      }
+      return;
+    }
+    morphChildren(from, to, active);
+  }
+  function morphChildren(from, to, active) {
+    var cf = from.firstChild, ct = to.firstChild;
+    while (ct) {
+      var nextT = ct.nextSibling;
+      if (!cf) {
+        from.appendChild(document.importNode(ct, true));
+        ct = nextT;
+        continue;
+      }
+      var kt = keyOf(ct);
+      if (kt) {
+        var s = cf, found = null;
+        while (s) {
+          if (keyOf(s) === kt) {
+            found = s;
+            break;
+          }
+          s = s.nextSibling;
+        }
+        if (found) {
+          if (found !== cf) from.insertBefore(found, cf);
+          morphNode(found, ct, active);
+          cf = found.nextSibling;
+        } else {
+          from.insertBefore(document.importNode(ct, true), cf);
+        }
+        ct = nextT;
+        continue;
+      }
+      if (
+        cf.nodeType === ct.nodeType &&
+        (cf.nodeType !== 1 || cf.tagName === ct.tagName) &&
+        !keyOf(cf)
+      ) {
+        morphNode(cf, ct, active);
+        cf = cf.nextSibling;
+        ct = nextT;
+      } else {
+        from.insertBefore(document.importNode(ct, true), cf);
+        ct = nextT;
+      }
+    }
+    while (cf) {
+      var rm = cf;
+      cf = cf.nextSibling;
+      from.removeChild(rm);
+    }
+  }
+  function patch(html) {
+    var root = document.getElementById("vibe-root");
+    if (!root) return;
+    var tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    var active = document.activeElement;
+    var selStart = active && "selectionStart" in active ? active.selectionStart : null;
+    var selEnd = active && "selectionEnd" in active ? active.selectionEnd : null;
+    var activeId = active ? keyOf(active) : null;
+    morphChildren(root, tmp, active);
+    // Restore focus/caret if the focused field survived by id.
+    if (activeId) {
+      var again = document.getElementById(activeId);
+      if (again && again !== document.activeElement) {
+        try {
+          again.focus();
+          if (selStart != null && "setSelectionRange" in again)
+            again.setSelectionRange(selStart, selEnd);
+        } catch (e) {}
+      }
+    }
+  }
+
+  // Commands from the shell.
   window.addEventListener("message", function (e) {
     var msg = e.data || {};
-    if (msg.type === "vibe-cmd") {
-      // no-op placeholder for now
-    }
+    if (msg.type === "vibe-patch" && typeof msg.html === "string") patch(msg.html);
   });
 })();
