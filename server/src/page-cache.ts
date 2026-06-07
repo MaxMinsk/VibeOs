@@ -37,6 +37,13 @@ class PageCache {
     this.persist();
   }
 
+  /** Drop all cached pages (e.g. after the filesystem changes). */
+  clear() {
+    if (this.map.size === 0) return;
+    this.map.clear();
+    this.persist();
+  }
+
   private persist() {
     try {
       if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });

@@ -96,6 +96,25 @@ holding JSON metadata, then nothing else:
 `name` = short display name, `glyph` = one emoji icon, `category` = one of
 `system | productivity | web | dev | media | fun | utility`.
 
+## Shared filesystem
+
+VibeOs has one shared virtual filesystem used by every app. When relevant, the
+current file listing is provided in the prompt under "VIRTUAL FILESYSTEM" (and a
+file's CONTENTS when you open it). **Render file managers, pickers and "Save/Open"
+dialogs from that real list** (use the exact paths), and open items via
+`data-action="open" data-arg="<path>"`.
+
+To **create, edit or delete files** (e.g. the user saves a note or a document),
+append ONE trailing HTML comment with the operations, after any vibe-meta:
+
+```
+<!--vibe-fs [{"op":"write","path":"/Users/maxim/Documents/note.txt","content":"hello"},{"op":"delete","path":"/Users/maxim/Downloads/old.zip"},{"op":"mkdir","path":"/Users/maxim/Projects"}] -->
+```
+
+Use full absolute paths under `/Users/maxim`. These changes are shared, so a file
+saved in Notes will then appear in Finder. Only emit `vibe-fs` when the user's
+action actually changes files.
+
 ## Honor the full brief
 
 The user's request defines not just the *type* of app but its *content and

@@ -9,10 +9,21 @@ import {
   buildEventPrompt,
   buildFirstEventPrompt,
 } from "./prompt-builder.js";
-import { sanitizeApp, sanitizePreview, type AppMeta } from "./sanitizer.js";
+import { sanitizeApp, sanitizePreview, extractFsOps, type AppMeta } from "./sanitizer.js";
 import { buildSrcDoc, buildPreviewDoc } from "./wrapper.js";
 import { appCache } from "./app-cache.js";
 import { pageCache, pageKey } from "./page-cache.js";
+import { vfs, type FsOp } from "./vfs.js";
+
+/** Filesystem context appended to generation prompts. */
+function fsBlock(): string {
+  return (
+    "\n\nVIRTUAL FILESYSTEM (the OS's shared files — render file managers/pickers " +
+    'from THIS list, open a path via data-action="open" data-arg="<path>"; to ' +
+    "create/edit/delete files emit a trailing <!--vibe-fs [...]--> as documented):\n" +
+    vfs.listing()
+  );
+}
 import type { ClientMessage, ServerMessage } from "./protocol.js";
 
 // Event actions that are read-only "drill-ins" worth caching by target
@@ -107,11 +118,14 @@ async function runAndRender(
 
     const model = patchMode ? MODEL_PATCH : MODEL_FULL;
     const { text, sessionId, cacheReadTokens } = await runApp({
-      prompt,
+      prompt: prompt + fsBlock(),
       resumeSessionId,
       model,
       onDelta,
     });
+    // Apply any filesystem operations the agent emitted.
+    const ops = extractFsOps(text) as FsOp[];
+    if (ops.length && vfs.apply(ops)) pageCache.clear();
     const { html, meta } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty render");
     if (patchMode) send({ type: "patch", windowId, html });
@@ -171,9 +185,13 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     }
     // reload → re-render the same target as a navigation.
     const action = msg.action === "reload" ? "navigate" : msg.action;
-    const prompt = msg.sessionId
+    let prompt = msg.sessionId
       ? buildEventPrompt(action, { ...(msg.detail as object), arg })
       : buildFirstEventPrompt(msg.brief, action, { ...(msg.detail as object), arg });
+    // Opening a known file → give the agent its contents to preview accurately.
+    const fileContent = vfs.read(arg);
+    if (fileContent !== undefined)
+      prompt += `\n\nCONTENTS of ${arg}:\n${fileContent}`;
     const res = await runAndRender(windowId, prompt, msg.sessionId ?? undefined, send, log);
     if (res) pageCache.put(key, res.html);
     return;

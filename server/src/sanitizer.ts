@@ -17,6 +17,18 @@ function stripFences(text: string): string {
   return t.trim();
 }
 
+/** Pull out file operations from a trailing <!--vibe-fs [...]--> comment. */
+export function extractFsOps(raw: string): unknown[] {
+  const m = raw.match(/<!--\s*vibe-fs\s*([\s\S]*?)-->/i);
+  if (!m) return [];
+  try {
+    const parsed = JSON.parse(m[1].trim());
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Pull out the trailing <!--vibe-meta {...}--> comment if present. */
 export function extractMeta(html: string): { html: string; meta: AppMeta | null } {
   const re = /<!--\s*vibe-meta\s*([\s\S]*?)-->/i;
