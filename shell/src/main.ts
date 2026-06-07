@@ -43,6 +43,7 @@ windowLayer.className = "window-layer";
 const dock = createDock(
   (app: AppDef) => wm.activateApp(app),
   () => void launchpad.show(),
+  (appId: string) => wm.focusApp(appId),
 );
 
 const menubar = createMenuBar({

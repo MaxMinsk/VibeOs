@@ -781,3 +781,14 @@ body {
   0% { left: -40%; }
   100% { left: 100%; }
 }
+
+/* ---------------- Dock: running (generated) apps ---------------- */
+.dock-running {
+  display: none;
+  align-items: flex-end;
+  gap: 10px;
+}
+.dock-running.has-items { display: flex; }
+.dock-icon--gen {
+  background: linear-gradient(160deg, #b06ab3, #4568dc);
+}

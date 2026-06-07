@@ -7,6 +7,8 @@ export interface RunOpts {
   prompt: string;
   /** Resume an existing app session (per-window continuity). */
   resumeSessionId?: string;
+  /** Override the model (e.g. a fast model for patches). Empty → default. */
+  model?: string;
   /** Called with each streamed text chunk. */
   onDelta?: (chunk: string) => void;
 }
@@ -15,6 +17,8 @@ export interface RunResult {
   text: string;
   /** Claude Code session id — store it to resume this app window later. */
   sessionId: string | null;
+  /** Tokens read from the prompt cache (for observability). */
+  cacheReadTokens?: number;
 }
 
 /**
@@ -33,15 +37,20 @@ export async function runApp(opts: RunOpts): Promise<RunResult> {
     strictMcpConfig: true,
     includePartialMessages: true, // emit token-level deltas for live preview
     pathToClaudeCodeExecutable: CLAUDE_BIN,
+    ...(opts.model ? { model: opts.model } : {}),
     ...(opts.resumeSessionId ? { resume: opts.resumeSessionId } : {}),
   };
 
   let text = "";
   let sessionId: string | null = opts.resumeSessionId ?? null;
+  let cacheReadTokens: number | undefined;
 
   for await (const message of query({ prompt: opts.prompt, options })) {
     const m = message as any;
     if (m.session_id) sessionId = m.session_id;
+    const usage = m.usage || m.message?.usage;
+    if (usage?.cache_read_input_tokens != null)
+      cacheReadTokens = usage.cache_read_input_tokens;
 
     // Token-level streaming events → live preview deltas.
     if (m.type === "stream_event") {
@@ -68,5 +77,5 @@ export async function runApp(opts: RunOpts): Promise<RunResult> {
     }
   }
 
-  return { text, sessionId };
+  return { text, sessionId, cacheReadTokens };
 }

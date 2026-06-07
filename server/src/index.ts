@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import type { WebSocket } from "ws";
-import { HOST, PORT, ALLOWED_ORIGINS, CLAUDE_BIN } from "./config.js";
+import { HOST, PORT, ALLOWED_ORIGINS, CLAUDE_BIN, MODEL_PATCH, MODEL_FULL } from "./config.js";
 import { runApp } from "./claude-runner.js";
 import {
   buildLaunchPrompt,
@@ -105,12 +105,19 @@ async function runAndRender(
             send({ type: "chunk", windowId, srcdoc: buildPreviewDoc(preview) });
         };
 
-    const { text, sessionId } = await runApp({ prompt, resumeSessionId, onDelta });
+    const model = patchMode ? MODEL_PATCH : MODEL_FULL;
+    const { text, sessionId, cacheReadTokens } = await runApp({
+      prompt,
+      resumeSessionId,
+      model,
+      onDelta,
+    });
     const { html, meta } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty render");
     if (patchMode) send({ type: "patch", windowId, html });
     else send({ type: "render", windowId, srcdoc: buildSrcDoc(html), meta, sessionId, done: true });
     send({ type: "status", windowId, state: "ready" });
+    log.info({ windowId, patchMode, cacheReadTokens }, "rendered");
     return { html, meta, sessionId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

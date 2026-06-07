@@ -6,6 +6,11 @@ import { dirname, resolve } from "node:path";
 export const HOST = process.env.HOST ?? "127.0.0.1"; // localhost-only by design
 export const PORT = Number(process.env.PORT ?? 8787);
 
+// Model tiering: a fast/cheap model for in-place patches, the default (stronger)
+// model for full generations. Empty string → inherit the user's configured model.
+export const MODEL_PATCH = process.env.VIBE_PATCH_MODEL ?? "claude-haiku-4-5-20251001";
+export const MODEL_FULL = process.env.VIBE_FULL_MODEL ?? "";
+
 // Repo root (server/src -> ../../).
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, "..", "..");

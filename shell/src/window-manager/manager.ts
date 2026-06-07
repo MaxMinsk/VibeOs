@@ -2,6 +2,7 @@ import type { AppDef } from "../apps";
 import { WindowView } from "./window-view";
 import type { AgentClient } from "../agent/client";
 import type { ServerMessage } from "../agent/protocol";
+import type { RunningApp } from "../desktop/dock";
 import { sound } from "../desktop/sound";
 import {
   type Geometry,
@@ -27,8 +28,8 @@ const slug = (s: string) =>
 export interface WindowManagerHooks {
   /** Title of the focused app (or null when none). */
   onActiveChange?: (title: string | null) => void;
-  /** Set of appIds that currently have at least one open window. */
-  onRunningChange?: (running: Set<string>) => void;
+  /** Apps that currently have at least one open window (one per appId). */
+  onRunningChange?: (running: RunningApp[]) => void;
 }
 
 export class WindowManager {
@@ -266,13 +267,30 @@ export class WindowManager {
 
   // ---- helpers ----
   private emitChange() {
-    const running = new Set<string>();
-    for (const v of this.views.values()) running.add(v.state.appId);
-    this.hooks.onRunningChange?.(running);
+    const byApp = new Map<string, RunningApp>();
+    for (const v of this.views.values()) {
+      if (!byApp.has(v.state.appId))
+        byApp.set(v.state.appId, {
+          appId: v.state.appId,
+          name: v.state.title,
+          glyph: v.state.glyph,
+        });
+    }
+    this.hooks.onRunningChange?.([...byApp.values()]);
     const title = this.activeId
       ? (this.views.get(this.activeId)?.state.title ?? null)
       : null;
     this.hooks.onActiveChange?.(title);
+  }
+
+  /** Focus the topmost window of a running app (used by dock running icons). */
+  focusApp(appId: string) {
+    let top: WindowView | null = null;
+    for (const v of this.views.values()) {
+      if (v.state.appId !== appId) continue;
+      if (!top || v.state.zIndex > top.state.zIndex) top = v;
+    }
+    if (top) this.focus(top.state.id);
   }
 
   private focusTopmost() {
