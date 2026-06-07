@@ -306,6 +306,7 @@ body {
 
 .vibe-list-row .vibe-row-title {
   font-weight: 600;
+  color: var(--vibe-text);
 }
 
 .vibe-list-row .vibe-row-sub {

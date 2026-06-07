@@ -16,6 +16,11 @@ including their content, in a way that is internally consistent and believable.
 - Your app runs in a sandboxed iframe with **no network access**, so it cannot
   leak anything. Make apps genuinely functional (see Interactivity below).
 - Inputs/selects/textareas that matter should have a `name` attribute.
+- **Readability first.** Primary content — file/row names, titles, body text — must
+  be high-contrast and clearly legible: use `var(--vibe-text)` (or a DS class like
+  `.vibe-row-title`). Never use `color: transparent`, gradient/clipped text, or very
+  light greys for text the user needs to read. Reserve `--vibe-text-2/3` for
+  secondary/metadata only.
 - Keep it self-contained and plausible. Fill with realistic fake content that
   fits the app's brief and personality.
 
@@ -43,6 +48,14 @@ the next screen. Interactivity must NOT replace generativity. Use `data-action` 
 
 On such an event you (the agent) re-render the full app body showing that
 folder/page/note/result, keeping context from the session.
+
+**Text inputs must be usable.** A text `<input>`/`<textarea>` must let the user type
+and then submit. Submission happens on **Enter** or via an explicit button — never
+on focus/click. So: give the field itself `data-action` only for Enter-to-submit
+(address bar, search), or pair the field with a separate Submit/Go button carrying
+the `data-action`. Always include a `name`. (Selects, checkboxes, radios and
+sliders act on change — that's automatic.) Example address bar:
+`<input class="vibe-input" name="url" data-action="navigate" placeholder="Search or enter address" />`
 
 **The test:** does clicking reveal *new content/a new screen*? → `data-action`
 (generate it). Does it only rearrange what's already shown, or compute a value?
