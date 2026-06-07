@@ -39,6 +39,11 @@ app.get("/apps", async () =>
   })),
 );
 
+// Forget a cached app (Launchpad "remove").
+app.delete<{ Params: { key: string } }>("/apps/:key", async (req) => ({
+  ok: appCache.remove(req.params.key),
+}));
+
 app.register(async (f) => {
   f.get("/ws", { websocket: true }, (socket: WebSocket) => {
     const send = (m: ServerMessage) => socket.send(JSON.stringify(m));

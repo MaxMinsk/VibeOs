@@ -6,3 +6,6 @@ dist/
 .env
 .env.local
 .vite/
+
+# Local design docs (kept out of the public repo)
+docs/

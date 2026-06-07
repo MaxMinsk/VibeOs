@@ -25,6 +25,8 @@ export function normalizeBrief(brief: string): string {
   return brief.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+const normalizeName = (name: string): string => name.trim().toLowerCase();
+
 class AppCache {
   private map = new Map<string, CachedApp>();
 
@@ -37,30 +39,45 @@ class AppCache {
         /* ignore corrupt cache */
       }
     }
+    this.dedupeByName(); // clean up any historical duplicates on startup
   }
 
   get(brief: string): CachedApp | undefined {
     return this.map.get(normalizeBrief(brief));
   }
 
-  /** Store a fresh first render. */
+  /** Store a fresh first render. Overwrites the same brief and collapses any
+   *  other entry sharing the same display name (so one app == one Launchpad icon).
+   */
   put(brief: string, html: string, meta: AppMeta | null): CachedApp {
     const key = normalizeBrief(brief);
     const now = new Date().toISOString();
+    const prev = this.map.get(key);
     const entry: CachedApp = {
       key,
       brief,
-      name: meta?.name || brief,
-      glyph: meta?.glyph || "✦",
-      category: meta?.category || "utility",
+      name: meta?.name || prev?.name || brief,
+      glyph: meta?.glyph || prev?.glyph || "✦",
+      category: meta?.category || prev?.category || "utility",
       html,
-      createdAt: now,
+      createdAt: prev?.createdAt || now,
       lastOpened: now,
-      opens: 1,
+      opens: prev?.opens ?? 1,
     };
     this.map.set(key, entry);
+    // Drop other entries with the same name (older variants / duplicates).
+    const n = normalizeName(entry.name);
+    for (const [k, e] of this.map) {
+      if (k !== key && normalizeName(e.name) === n) this.map.delete(k);
+    }
     this.persist();
     return entry;
+  }
+
+  remove(key: string): boolean {
+    const ok = this.map.delete(key);
+    if (ok) this.persist();
+    return ok;
   }
 
   markOpened(key: string) {
@@ -68,6 +85,19 @@ class AppCache {
     if (!e) return;
     e.opens++;
     e.lastOpened = new Date().toISOString();
+    this.persist();
+  }
+
+  /** Keep only the most-recently-opened entry per display name. */
+  private dedupeByName() {
+    const byName = new Map<string, CachedApp>();
+    for (const e of this.map.values()) {
+      const n = normalizeName(e.name);
+      const cur = byName.get(n);
+      if (!cur || e.lastOpened > cur.lastOpened) byName.set(n, e);
+    }
+    if (byName.size === this.map.size) return; // nothing to do
+    this.map = new Map([...byName.values()].map((e) => [e.key, e]));
     this.persist();
   }
 
