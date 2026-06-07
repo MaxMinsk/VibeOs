@@ -154,6 +154,16 @@ export class WindowManager {
     });
   }
 
+  closeActive() {
+    if (this.activeId) this.close(this.activeId);
+  }
+  minimizeActive() {
+    if (this.activeId) this.minimize(this.activeId);
+  }
+  zoomActive() {
+    if (this.activeId) this.toggleMaximize(this.activeId);
+  }
+
   /** Forget the active window's cached app and regenerate it in place (⌘J). */
   regenerateActive() {
     if (!this.activeId) return;

@@ -24,25 +24,38 @@ including their content, in a way that is internally consistent and believable.
 Make apps actually work. There are two ways to handle a user action — choose per
 control:
 
-**1. Local JavaScript — instant, free. PREFER THIS.** For anything deterministic
-or self-contained, write the logic directly in a `<script>` (or inline `onclick`,
-`oninput`, etc.) so it runs in the browser with zero latency and no agent call.
-Use it for: calculator math, toggling tabs/sections, filtering/sorting lists,
-counters, timers, form validation, games, drawing on `<canvas>`, editing text,
-and — where you can — terminal/REPL command handling with the responses baked
-into the script (keep the app's personality in that JS!).
+**1. Local JavaScript — instant, free.** For deterministic, self-contained UI that
+only manipulates *already-visible* state, write the logic in a `<script>` (or inline
+`onclick`, `oninput`, …) so it runs with zero latency. Use it for: calculator math,
+toggling tabs/sections, show/hide, filtering or sorting a list that is already on
+screen, counters, timers, form/input editing, games, `<canvas>` drawing, and a
+terminal's command echo/REPL.
 
-**2. Agent round-trip via `data-action`.** Only when the action genuinely needs
-the agent: producing new hallucinated content, navigating to a new page/file/site,
-personality-driven responses you can't precompute, or persistence. Give such
-elements `data-action="<verb>"` and optional `data-arg="<value>"`; the OS bridge
-forwards them and you (the agent) re-render. Do NOT also attach a local handler to
-the same element — pick one path per control.
+**2. Agent round-trip via `data-action` — KEEP IT GENERATIVE.** Whenever an action
+should reveal **new content** that doesn't exist on screen yet, do NOT fake it in
+JS — emit `data-action="<verb>"` + `data-arg="<value>"` and let the agent generate
+the next screen. Interactivity must NOT replace generativity. Use `data-action` for:
+- **Navigating into a folder / directory** (Finder) → `data-action="open" data-arg="<path>"`
+- **Opening a document / note / file / email / chat** → `data-action="open-note" data-arg="<id>"`
+- **Browsing the web**: entering a URL or clicking a link (Safari) → `data-action="navigate" data-arg="<url>"`
+- **Search** that should return rich results → `data-action="search"` (value via the input)
+- Any **drill-in / "next screen"** whose contents should be freshly hallucinated.
 
-Rules of thumb: a control that should respond *instantly and the same way every
-time* → local JS. A control that should *generate something new or stay in
-character unpredictably* → `data-action`. When in doubt and it's computable,
-do it locally.
+On such an event you (the agent) re-render the full app body showing that
+folder/page/note/result, keeping context from the session.
+
+**The test:** does clicking reveal *new content/a new screen*? → `data-action`
+(generate it). Does it only rearrange what's already shown, or compute a value?
+→ local JS. When unsure whether content should feel real and specific, prefer
+`data-action`. Don't attach both a local handler and `data-action` to one element.
+
+Example — a Finder row that navigates by generating the folder's contents:
+
+```
+<div class="vibe-list-row" data-action="open" data-arg="/Classified/Operations">
+  <span>📁</span><div class="vibe-row-title">Operations</div>
+</div>
+```
 
 ## Metadata (first render only)
 
