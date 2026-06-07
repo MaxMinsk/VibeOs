@@ -31,6 +31,7 @@ export async function runApp(opts: RunOpts): Promise<RunResult> {
     // servers. We only want a clean UI generator — no corporate MCP gateways.
     settingSources: [],
     strictMcpConfig: true,
+    includePartialMessages: true, // emit token-level deltas for live preview
     pathToClaudeCodeExecutable: CLAUDE_BIN,
     ...(opts.resumeSessionId ? { resume: opts.resumeSessionId } : {}),
   };
@@ -42,12 +43,23 @@ export async function runApp(opts: RunOpts): Promise<RunResult> {
     const m = message as any;
     if (m.session_id) sessionId = m.session_id;
 
+    // Token-level streaming events → live preview deltas.
+    if (m.type === "stream_event") {
+      const ev = m.event;
+      if (
+        ev?.type === "content_block_delta" &&
+        ev.delta?.type === "text_delta" &&
+        ev.delta.text
+      ) {
+        opts.onDelta?.(ev.delta.text);
+      }
+      continue;
+    }
+
+    // Final assistant message → authoritative text.
     if (m.type === "assistant" && m.message?.content) {
       for (const part of m.message.content) {
-        if (part.type === "text" && part.text) {
-          text += part.text;
-          opts.onDelta?.(part.text);
-        }
+        if (part.type === "text" && part.text) text += part.text;
       }
     }
 

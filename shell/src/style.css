@@ -754,3 +754,30 @@ body {
 .os-menu-shortcut { opacity: 0.55; font-size: 12px; }
 .os-menu-item:hover:not(.disabled) .os-menu-shortcut { opacity: 0.85; }
 .os-menu-sep { height: 0.5px; background: rgba(0, 0, 0, 0.14); margin: 5px 6px; }
+
+/* ---------------- Streaming progress bar ---------------- */
+.window-streambar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  display: none;
+  overflow: hidden;
+  background: rgba(10, 132, 255, 0.18);
+}
+.window-streambar.visible { display: block; }
+.window-streambar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: #0a84ff;
+  animation: vibe-stream 1s ease-in-out infinite;
+}
+@keyframes vibe-stream {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}

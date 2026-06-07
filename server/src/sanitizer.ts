@@ -97,3 +97,14 @@ export function sanitizeApp(raw: string): { html: string; meta: AppMeta | null }
   const clean = sanitizeHtml(html, SANITIZE_OPTS);
   return { html: clean, meta };
 }
+
+/**
+ * Sanitize an INCOMPLETE stream for a live preview: cut at the first <script>
+ * (no partial/active scripts mid-stream) and clean the visual HTML so far.
+ */
+export function sanitizePreview(raw: string): string {
+  let t = stripFences(raw);
+  const i = t.indexOf("<script");
+  if (i >= 0) t = t.slice(0, i);
+  return sanitizeHtml(t, SANITIZE_OPTS);
+}

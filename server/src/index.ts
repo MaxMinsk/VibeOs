@@ -9,8 +9,8 @@ import {
   buildEventPrompt,
   buildFirstEventPrompt,
 } from "./prompt-builder.js";
-import { sanitizeApp } from "./sanitizer.js";
-import { buildSrcDoc } from "./wrapper.js";
+import { sanitizeApp, sanitizePreview } from "./sanitizer.js";
+import { buildSrcDoc, buildPreviewDoc } from "./wrapper.js";
 import { appCache } from "./app-cache.js";
 import type { ClientMessage, ServerMessage } from "./protocol.js";
 
@@ -102,7 +102,19 @@ async function handle(
 
   send({ type: "status", windowId, state: "thinking" });
   try {
-    const { text, sessionId } = await runApp({ prompt, resumeSessionId });
+    // Stream a throttled live preview of the UI as it generates.
+    let acc = "";
+    let lastFlush = 0;
+    const onDelta = (chunk: string) => {
+      acc += chunk;
+      const now = Date.now();
+      if (now - lastFlush < 180 || acc.length < 40) return;
+      lastFlush = now;
+      const html = sanitizePreview(acc);
+      if (html.trim()) send({ type: "chunk", windowId, srcdoc: buildPreviewDoc(html) });
+    };
+
+    const { text, sessionId } = await runApp({ prompt, resumeSessionId, onDelta });
     const { html, meta } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty render");
     if (msg.type === "launch") appCache.put(msg.brief, html, meta);

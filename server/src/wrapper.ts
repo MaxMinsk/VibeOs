@@ -19,3 +19,11 @@ export function buildSrcDoc(bodyHtml: string): string {
   out = fill(out, "{{BRIDGE}}", freshFile(BRIDGE));
   return out;
 }
+
+/** Like buildSrcDoc but without the bridge — for streaming previews (no JS). */
+export function buildPreviewDoc(bodyHtml: string): string {
+  let out = fill(freshFile(TEMPLATE), "{{STYLE}}", freshFile(CSS));
+  out = fill(out, "{{CONTENT}}", bodyHtml);
+  out = fill(out, "{{BRIDGE}}", "");
+  return out;
+}

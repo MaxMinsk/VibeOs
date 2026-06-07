@@ -118,6 +118,8 @@ export class WindowManager {
       if (msg.state === "thinking") view.setLoading(true);
       if (msg.state === "error")
         view.showError(msg.message ?? "error", () => this.retry(msg.windowId));
+    } else if (msg.type === "chunk") {
+      view.setStreaming(msg.srcdoc);
     } else if (msg.type === "render") {
       if (msg.meta?.name) {
         view.setTitle(msg.meta.name, msg.meta.glyph);

@@ -15,6 +15,7 @@ export class WindowView {
   private readonly titlebar: HTMLElement;
   private readonly iframe: HTMLIFrameElement;
   private readonly overlay: HTMLElement;
+  private readonly streambar: HTMLElement;
   private readonly titleEl: HTMLElement;
 
   constructor(
@@ -41,6 +42,7 @@ export class WindowView {
           <div class="spinner"></div>
           <div class="overlay-text">Generating ${state.title}…</div>
         </div>
+        <div class="window-streambar"></div>
       </div>
       ${RESIZE_DIRS.map((d) => `<span class="rh rh-${d}" data-dir="${d}"></span>`).join("")}
     `;
@@ -48,6 +50,7 @@ export class WindowView {
     this.titlebar = this.el.querySelector(".titlebar")!;
     this.iframe = this.el.querySelector(".window-frame")!;
     this.overlay = this.el.querySelector(".window-overlay")!;
+    this.streambar = this.el.querySelector(".window-streambar")!;
     this.titleEl = this.el.querySelector(".win-name")!;
     // The bridge inside the iframe reads its window id from window.name.
     this.iframe.name = state.id;
@@ -94,17 +97,26 @@ export class WindowView {
     this.el.style.zIndex = String(this.state.zIndex);
   }
 
-  /** Replace the iframe content with agent-generated srcdoc. */
+  /** Progressive preview during streaming (no scripts/bridge yet). */
+  setStreaming(srcdoc: string) {
+    this.iframe.srcdoc = srcdoc;
+    this.overlay.classList.remove("visible"); // reveal the UI being built
+    this.streambar.classList.add("visible");
+  }
+
+  /** Replace the iframe content with the final agent-generated srcdoc. */
   setContent(srcdoc: string) {
     // Reset window.name each render (cleared when srcdoc reloads the doc).
     this.iframe.name = this.state.id;
     this.iframe.srcdoc = srcdoc;
+    this.streambar.classList.remove("visible");
     this.setLoading(false);
   }
 
   setLoading(loading: boolean, text = "Generating…") {
     if (loading) {
       this.overlay.innerHTML = `<div class="spinner"></div><div class="overlay-text">${escapeHtml(text)}</div>`;
+      this.streambar.classList.remove("visible");
     }
     this.overlay.classList.toggle("visible", loading);
   }
@@ -127,6 +139,7 @@ export class WindowView {
         <div class="overlay-error-msg">${escapeHtml(message)}</div>
         ${onRetry ? `<button class="overlay-retry">Retry</button>` : ""}
       </div>`;
+    this.streambar.classList.remove("visible");
     this.overlay.classList.add("visible");
     if (onRetry) {
       this.overlay

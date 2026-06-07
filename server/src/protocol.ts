@@ -25,6 +25,7 @@ export type ServerMessage =
       state: "thinking" | "ready" | "error";
       message?: string;
     }
+  | { type: "chunk"; windowId: string; srcdoc: string }
   | {
       type: "render";
       windowId: string;
