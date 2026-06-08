@@ -15,6 +15,12 @@ including their content, in a way that is internally consistent and believable.
   or inline SVG / `data:` URIs instead of remote images.
 - Your app runs in a sandboxed iframe with **no network access**, so it cannot
   leak anything. Make apps genuinely functional (see Interactivity below).
+- **No dead controls.** EVERY clickable element — button, link, list row, sidebar
+  item, tab, menu item, toggle, icon — MUST do something. Either handle it locally
+  with an inline `onclick`/`onchange` (so the OS sees it's wired), or give it a
+  `data-action` so clicking it asks the agent to respond. Never render a
+  button/link that does nothing. When in doubt, add `data-action` — a click should
+  always produce a result (an update or a newly generated screen).
 - Inputs/selects/textareas that matter should have a `name` attribute.
 - **Readability first.** Primary content — file/row names, titles, body text — must
   be high-contrast and clearly legible: use `var(--vibe-text)` (or a DS class like

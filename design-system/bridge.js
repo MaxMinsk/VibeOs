@@ -42,6 +42,17 @@
   // Click handling. Clicking INTO a text field never triggers an action — fields
   // are edited and submitted via Enter / a button / change (below). This keeps
   // address bars and search boxes stable.
+  var CLICKABLE =
+    "button, [role=button], .vibe-btn, .vibe-list-row, .vibe-sidebar-item," +
+    " .vibe-tab, .vibe-menu-item, .vibe-tile, .vibe-segmented > button";
+
+  function label(el) {
+    return (el.getAttribute("aria-label") || el.textContent || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+  }
+
   document.addEventListener("click", function (e) {
     if (e.target.closest("input, textarea, select")) return; // editing a field
     var t = e.target.closest("[data-action]");
@@ -57,6 +68,15 @@
       var href = a.getAttribute("href");
       var target = href && href !== "#" ? href : a.textContent.trim();
       if (target) send("navigate", target);
+      return;
+    }
+    // Safety net: a clearly-clickable control the app left unwired (no data-action,
+    // no inline onclick, not a form submit) still triggers a generation — no dead
+    // buttons. Locally-handled controls use inline onclick and are skipped.
+    var c = e.target.closest(CLICKABLE);
+    if (c && !c.disabled && !c.hasAttribute("onclick") && !c.closest("form")) {
+      e.preventDefault();
+      send("activate", label(c));
     }
   });
 
