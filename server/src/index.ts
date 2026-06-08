@@ -162,6 +162,9 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
         log.info({ windowId, key: cached.key }, "app cache hit");
         return;
       }
+    } else {
+      // Regenerating the whole app (⌘J) invalidates all of its inner pages.
+      pageCache.clearByBrief(msg.brief);
     }
     const res = await runAndRender(windowId, buildLaunchPrompt(msg.brief), undefined, send, log);
     if (res) appCache.put(msg.brief, res.html, res.meta);

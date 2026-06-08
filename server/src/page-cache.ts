@@ -44,6 +44,18 @@ class PageCache {
     this.persist();
   }
 
+  /** Drop all pages of one app — used when the whole app is regenerated (⌘J). */
+  clearByBrief(brief: string) {
+    const prefix = normalizeBrief(brief) + "::";
+    let changed = false;
+    for (const k of [...this.map.keys()])
+      if (k.startsWith(prefix)) {
+        this.map.delete(k);
+        changed = true;
+      }
+    if (changed) this.persist();
+  }
+
   private persist() {
     try {
       if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
