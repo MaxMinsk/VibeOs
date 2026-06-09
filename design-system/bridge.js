@@ -23,7 +23,14 @@
     return state;
   }
 
-  function send(action, arg, extra) {
+  function send(action, arg, target) {
+    // If a region is targeted, include its current HTML so the agent can update
+    // only that region (the rest of the app stays as-is).
+    var regionHtml = null;
+    if (target) {
+      var region = document.getElementById(target);
+      if (region) regionHtml = region.innerHTML;
+    }
     parent.postMessage(
       {
         type: "vibe-event",
@@ -31,8 +38,9 @@
         event: {
           action: action,
           arg: arg == null ? null : arg,
+          target: target || null,
+          regionHtml: regionHtml,
           formState: collectFormState(),
-          extra: extra || null,
         },
       },
       "*",
@@ -99,7 +107,11 @@
     if (t) {
       e.preventDefault();
       closeMenu();
-      send(t.getAttribute("data-action"), t.getAttribute("data-arg"));
+      send(
+        t.getAttribute("data-action"),
+        t.getAttribute("data-arg"),
+        t.getAttribute("data-target"),
+      );
       return;
     }
     // Any link without an explicit data-action becomes a navigation.
@@ -246,8 +258,7 @@
       from.removeChild(rm);
     }
   }
-  function patch(html) {
-    var root = document.getElementById("vibe-root");
+  function patchEl(root, html) {
     if (!root) return;
     var tmp = document.createElement("div");
     tmp.innerHTML = html;
@@ -272,6 +283,10 @@
   // Commands from the shell.
   window.addEventListener("message", function (e) {
     var msg = e.data || {};
-    if (msg.type === "vibe-patch" && typeof msg.html === "string") patch(msg.html);
+    if (msg.type === "vibe-patch" && typeof msg.html === "string") {
+      patchEl(document.getElementById("vibe-root"), msg.html);
+    } else if (msg.type === "vibe-patch-region" && typeof msg.html === "string") {
+      patchEl(document.getElementById(msg.target), msg.html);
+    }
   });
 })();

@@ -125,6 +125,8 @@ export class WindowManager {
       view.setStreaming(msg.srcdoc);
     } else if (msg.type === "patch") {
       view.applyPatch(msg.html);
+    } else if (msg.type === "patch-region") {
+      view.applyRegionPatch(msg.target, msg.html);
     } else if (msg.type === "render") {
       if (msg.meta?.name) {
         view.setTitle(msg.meta.name, msg.meta.glyph);

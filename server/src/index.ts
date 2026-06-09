@@ -8,6 +8,7 @@ import {
   buildLaunchPrompt,
   buildEventPrompt,
   buildFirstEventPrompt,
+  buildRegionPrompt,
 } from "./prompt-builder.js";
 import {
   sanitizeApp,
@@ -164,6 +165,34 @@ async function runAndRender(
   }
 }
 
+/** Generate just one named region of an app (Tier-2 targeted update). */
+async function runRegion(
+  windowId: string,
+  brief: string,
+  target: string,
+  prompt: string,
+  send: Send,
+  log: typeof app.log,
+) {
+  send({ type: "status", windowId, state: "thinking" });
+  try {
+    const { text } = await runApp({
+      prompt: prompt + profileBlock(brief) + fsBlock(),
+      model: MODEL_PATCH, // small targeted change → fast model
+    });
+    const { html } = sanitizeApp(text);
+    if (!html.trim()) throw new Error("empty region");
+    send({ type: "patch-region", windowId, target, html });
+    send({ type: "status", windowId, state: "ready" });
+    log.info({ windowId, target }, "region patched");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.error({ err, windowId, target }, "region failed");
+    send({ type: "status", windowId, state: "error", message });
+    send({ type: "error", windowId, message });
+  }
+}
+
 async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
   if (msg.type === "close") return;
   const windowId = msg.windowId;
@@ -193,6 +222,16 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
       appCache.put(msg.brief, res.html, res.meta);
       if (res.profile) appCache.setProfile(msg.brief, res.profile);
     }
+    return;
+  }
+
+  // --- Targeted region update (takes priority: data-target beats action name). ---
+  const d = (msg.detail ?? {}) as { target?: unknown; regionHtml?: unknown; arg?: unknown };
+  const target = typeof d.target === "string" ? d.target : "";
+  const regionHtml = typeof d.regionHtml === "string" ? d.regionHtml : "";
+  if (target && regionHtml) {
+    const prompt = buildRegionPrompt(msg.brief, msg.action, d.arg, target, regionHtml);
+    await runRegion(windowId, msg.brief, target, prompt, send, log);
     return;
   }
 
@@ -228,7 +267,7 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     return;
   }
 
-  // --- Generic in-place event: patch the DOM (preserve focus/scroll). ---
+  // --- Generic in-place event: patch the whole body (preserve focus/scroll). ---
   const prompt = msg.sessionId
     ? buildEventPrompt(msg.action, msg.detail)
     : buildFirstEventPrompt(msg.brief, msg.action, msg.detail);

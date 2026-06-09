@@ -135,6 +135,17 @@ export class WindowView {
     this.hasContent = true;
   }
 
+  /** Patch only one named region in place (Tier-2 targeted update). */
+  applyRegionPatch(target: string, html: string) {
+    this.iframe.contentWindow?.postMessage(
+      { type: "vibe-patch-region", target, html },
+      "*",
+    );
+    this.streambar.classList.remove("visible");
+    this.setLoading(false);
+    this.hasContent = true;
+  }
+
   setLoading(loading: boolean, text = "Generating…") {
     if (loading) {
       this.overlay.innerHTML = `<div class="spinner"></div><div class="overlay-text">${escapeHtml(text)}</div>`;

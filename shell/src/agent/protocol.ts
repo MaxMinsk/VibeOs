@@ -27,6 +27,7 @@ export type ServerMessage =
     }
   | { type: "chunk"; windowId: string; srcdoc: string }
   | { type: "patch"; windowId: string; html: string }
+  | { type: "patch-region"; windowId: string; target: string; html: string }
   | {
       type: "render";
       windowId: string;

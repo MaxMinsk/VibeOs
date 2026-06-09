@@ -77,6 +77,24 @@ sliders act on change — that's automatic.) Example address bar:
 → local JS. When unsure whether content should feel real and specific, prefer
 `data-action`. Don't attach both a local handler and `data-action` to one element.
 
+**Targeted regions (faster — update only part of the app).** When the app has a
+stable shell (window chrome, toolbar, sidebar, menu bar) and a *changing area*
+(a content pane, a tabs body, a preview pane, an inner window in a Windows/desktop
+simulator), give that container a stable `id` and `data-region`, and add
+`data-target="<id>"` to the controls that update it. Such a click regenerates ONLY
+that region — the rest of the app stays untouched, and it's faster/cheaper. Keep
+region ids stable across renders. On a region update you'll be asked to return just
+that region's inner HTML. Use it for drill-ins inside a persistent shell; for a
+brand-new full screen, omit `data-target`. Example:
+
+```
+<nav class="vibe-sidebar">
+  <div class="vibe-sidebar-item" data-action="open" data-arg="inbox" data-target="content">Inbox</div>
+  <div class="vibe-sidebar-item" data-action="open" data-arg="sent" data-target="content">Sent</div>
+</nav>
+<main id="content" data-region class="vibe-content">…current folder…</main>
+```
+
 Example — a Finder row that navigates by generating the folder's contents:
 
 ```

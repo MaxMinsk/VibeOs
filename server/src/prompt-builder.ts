@@ -32,6 +32,32 @@ export function buildEventPrompt(action: string, detail: unknown): string {
 }
 
 /**
+ * Update only ONE named region of an app (Tier-2 targeted update). The agent gets
+ * the region's current HTML and returns just its new inner HTML.
+ */
+export function buildRegionPrompt(
+  brief: string,
+  action: string,
+  arg: unknown,
+  target: string,
+  regionHtml: string,
+): string {
+  return [
+    `Update ONLY the region "#${target}" of this app after a user action. Return`,
+    `ONLY the new INNER HTML of #${target} — no wrapping element, no other parts of`,
+    "the app, no <!--vibe-* --> trailers. Keep it consistent with the app's look",
+    "(see APP PROFILE) and the Design System.",
+    "",
+    `APP: ${brief}`,
+    `ACTION: ${action}`,
+    `ARG: ${JSON.stringify(arg)}`,
+    "",
+    `CURRENT INNER HTML of #${target}:`,
+    regionHtml,
+  ].join("\n");
+}
+
+/**
  * First interaction on a window that was opened from cache (no live session yet).
  * Re-establishes context from the brief so the new session can continue.
  */
