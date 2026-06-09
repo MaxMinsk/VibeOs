@@ -9,11 +9,26 @@ import {
   buildEventPrompt,
   buildFirstEventPrompt,
 } from "./prompt-builder.js";
-import { sanitizeApp, sanitizePreview, extractFsOps, type AppMeta } from "./sanitizer.js";
+import {
+  sanitizeApp,
+  sanitizePreview,
+  extractFsOps,
+  extractProfile,
+  type AppMeta,
+} from "./sanitizer.js";
 import { buildSrcDoc, buildPreviewDoc } from "./wrapper.js";
 import { appCache } from "./app-cache.js";
 import { pageCache, pageKey } from "./page-cache.js";
 import { vfs, type FsOp } from "./vfs.js";
+
+/** The app's evolving design/state digest, injected to keep it consistent. */
+function profileBlock(brief: string): string {
+  const p = appCache.getProfile(brief);
+  return p
+    ? "\n\nAPP PROFILE (a compact evolving summary of THIS app — keep its look, " +
+        "structure, naming and behaviour consistent with it):\n" + p
+    : "";
+}
 
 /** Filesystem context appended to generation prompts. */
 function fsBlock(): string {
@@ -93,12 +108,18 @@ function serveCached(
 /** Generate a screen with live streaming and send it. Returns the result. */
 async function runAndRender(
   windowId: string,
+  brief: string,
   prompt: string,
   resumeSessionId: string | undefined,
   send: Send,
   log: typeof app.log,
   patchMode = false,
-): Promise<{ html: string; meta: ReturnType<typeof sanitizeApp>["meta"]; sessionId: string | null } | null> {
+): Promise<{
+  html: string;
+  meta: ReturnType<typeof sanitizeApp>["meta"];
+  sessionId: string | null;
+  profile: string | null;
+} | null> {
   send({ type: "status", windowId, state: "thinking" });
   try {
     // Stream a live preview only for full renders (a patch updates in place).
@@ -118,7 +139,7 @@ async function runAndRender(
 
     const model = patchMode ? MODEL_PATCH : MODEL_FULL;
     const { text, sessionId, cacheReadTokens } = await runApp({
-      prompt: prompt + fsBlock(),
+      prompt: prompt + profileBlock(brief) + fsBlock(),
       resumeSessionId,
       model,
       onDelta,
@@ -126,13 +147,14 @@ async function runAndRender(
     // Apply any filesystem operations the agent emitted.
     const ops = extractFsOps(text) as FsOp[];
     if (ops.length && vfs.apply(ops)) pageCache.clear();
+    const profile = extractProfile(text);
     const { html, meta } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty render");
     if (patchMode) send({ type: "patch", windowId, html });
     else send({ type: "render", windowId, srcdoc: buildSrcDoc(html), meta, sessionId, done: true });
     send({ type: "status", windowId, state: "ready" });
     log.info({ windowId, patchMode, cacheReadTokens }, "rendered");
-    return { html, meta, sessionId };
+    return { html, meta, sessionId, profile };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.error({ err, windowId }, "render failed");
@@ -166,8 +188,11 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
       // Regenerating the whole app (⌘J) invalidates all of its inner pages.
       pageCache.clearByBrief(msg.brief);
     }
-    const res = await runAndRender(windowId, buildLaunchPrompt(msg.brief), undefined, send, log);
-    if (res) appCache.put(msg.brief, res.html, res.meta);
+    const res = await runAndRender(windowId, msg.brief, buildLaunchPrompt(msg.brief), undefined, send, log);
+    if (res) {
+      appCache.put(msg.brief, res.html, res.meta);
+      if (res.profile) appCache.setProfile(msg.brief, res.profile);
+    }
     return;
   }
 
@@ -195,8 +220,11 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     const fileContent = vfs.read(arg);
     if (fileContent !== undefined)
       prompt += `\n\nCONTENTS of ${arg}:\n${fileContent}`;
-    const res = await runAndRender(windowId, prompt, msg.sessionId ?? undefined, send, log);
-    if (res) pageCache.put(key, res.html);
+    const res = await runAndRender(windowId, msg.brief, prompt, msg.sessionId ?? undefined, send, log);
+    if (res) {
+      pageCache.put(key, res.html);
+      if (res.profile) appCache.setProfile(msg.brief, res.profile);
+    }
     return;
   }
 
@@ -204,7 +232,8 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
   const prompt = msg.sessionId
     ? buildEventPrompt(msg.action, msg.detail)
     : buildFirstEventPrompt(msg.brief, msg.action, msg.detail);
-  await runAndRender(windowId, prompt, msg.sessionId ?? undefined, send, log, true);
+  const res = await runAndRender(windowId, msg.brief, prompt, msg.sessionId ?? undefined, send, log, true);
+  if (res?.profile) appCache.setProfile(msg.brief, res.profile);
 }
 
 try {

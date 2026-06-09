@@ -90,10 +90,14 @@ regenerates the current page.
 `data-action="open" data-arg="<path>"`. Opening a file generates a Quick Look
 preview of its contents (text, image, document…) with a way back to the listing.
 
-## Metadata (first render only)
+## Trailers (metadata, profile, file ops)
 
-On the **first** render of a new app, end your output with a single HTML comment
-holding JSON metadata, then nothing else:
+After the HTML body, you may append up to three trailing HTML comments, in this
+order, and nothing else after them: `vibe-meta`, then `vibe-profile`, then
+`vibe-fs`. Each is optional except as noted below.
+
+**Metadata** — on the **first** render of a new app only, a single comment with
+JSON metadata:
 
 ```
 <!--vibe-meta {"name":"Finder","glyph":"🗂","category":"system"} -->
@@ -101,6 +105,25 @@ holding JSON metadata, then nothing else:
 
 `name` = short display name, `glyph` = one emoji icon, `category` = one of
 `system | productivity | web | dev | media | fun | utility`.
+
+## App profile (stay consistent across screens & reopens)
+
+To keep an app looking and behaving the same across navigations and when it is
+reopened later, VibeOs keeps a tiny per-app **profile**. When one is known it is
+given to you as "APP PROFILE" — honor it (same layout, accent colour, header
+style, fonts/emoji usage, naming, tone, and any noted state).
+
+On **full renders** (launch and navigation — not on small in-place updates), end
+your output with ONE compact profile comment (after vibe-meta if present),
+**overwriting** the previous one — keep it under ~80 words:
+
+```
+<!--vibe-profile Safari clone. Toolbar: grey, back/forward/reload + pill address bar. Accent #0a84ff. Body: white cards, 14px. Tabs as segmented control. Currently at reddit.com. Tone: neutral. -->
+```
+
+Capture the visual identity and key persistent state (current location/path,
+theme, selected item) — NOT full content. This is the app's durable memory; the
+filesystem holds files, this holds the look & feel.
 
 ## Shared filesystem
 

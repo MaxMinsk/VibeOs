@@ -13,6 +13,8 @@ export interface CachedApp {
   category: string;
   /** Sanitized first-render HTML body (srcdoc is rebuilt on serve). */
   html: string;
+  /** Compact evolving design/state digest, injected to keep the app consistent. */
+  profile?: string;
   createdAt: string;
   lastOpened: string;
   opens: number;
@@ -78,6 +80,18 @@ class AppCache {
     const ok = this.map.delete(key);
     if (ok) this.persist();
     return ok;
+  }
+
+  getProfile(brief: string): string | undefined {
+    return this.map.get(normalizeBrief(brief))?.profile;
+  }
+
+  /** Update an app's profile digest (no-op if the app isn't cached yet). */
+  setProfile(brief: string, profile: string) {
+    const e = this.map.get(normalizeBrief(brief));
+    if (!e || e.profile === profile) return;
+    e.profile = profile;
+    this.persist();
   }
 
   markOpened(key: string) {

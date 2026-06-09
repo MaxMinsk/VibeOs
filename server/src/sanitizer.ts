@@ -17,6 +17,12 @@ function stripFences(text: string): string {
   return t.trim();
 }
 
+/** Pull out the compact app profile from a <!--vibe-profile ...--> comment. */
+export function extractProfile(raw: string): string | null {
+  const m = raw.match(/<!--\s*vibe-profile\s*([\s\S]*?)-->/i);
+  return m ? m[1].trim().slice(0, 1200) : null;
+}
+
 /** Pull out file operations from a trailing <!--vibe-fs [...]--> comment. */
 export function extractFsOps(raw: string): unknown[] {
   const m = raw.match(/<!--\s*vibe-fs\s*([\s\S]*?)-->/i);
