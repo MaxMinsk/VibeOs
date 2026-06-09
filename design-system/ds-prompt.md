@@ -34,6 +34,11 @@ including their content, in a way that is internally consistent and believable.
     light surface. `--vibe-text-3` is for the faintest hints only.
   - Never use `color: transparent`, gradient/clipped text, or low-opacity text for
     anything the user needs to read.
+  - **File/row names in lists and tables are PRIMARY text** — render them in
+    `var(--vibe-text)` (dark on light). STRONGLY prefer the DS components
+    `.vibe-list-row` + `.vibe-row-title` or `.vibe-table`; if you build a custom
+    grid for a file list, the name cell MUST still be `var(--vibe-text)` — never a
+    light grey, never `--vibe-text-2/3`, never reduced opacity.
   - Before finishing, sanity-check: would a person read every label easily? If any
     text looks faint against its background, fix the color or the background.
 - Keep it self-contained and plausible. Fill with realistic fake content that

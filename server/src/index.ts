@@ -253,33 +253,24 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     return;
   }
 
-  // --- Targeted region update (takes priority: data-target beats action name). ---
+  // --- Resolve region + arg from the event. ---
   const d = (msg.detail ?? {}) as { target?: unknown; regionHtml?: unknown; arg?: unknown };
-  const target = typeof d.target === "string" ? d.target : "";
+  const explicitTarget = typeof d.target === "string" ? d.target : "";
   const regionHtml = typeof d.regionHtml === "string" ? d.regionHtml : "";
-  if (target && regionHtml) {
-    const prompt = buildRegionPrompt(msg.brief, msg.action, d.arg, target, regionHtml);
-    await runRegion(windowId, msg.brief, target, prompt, send, log);
-    return;
-  }
+  const arg = d.arg != null ? String(d.arg) : "";
+  const isDrill = DRILL_ACTIONS.has(msg.action);
 
-  // --- Drill-in events (browser pages, Finder folders/files): page cache. ---
-  const arg = msg.detail && typeof msg.detail === "object"
-    ? String((msg.detail as { arg?: unknown }).arg ?? "")
-    : "";
-  if (DRILL_ACTIONS.has(msg.action) && arg) {
-    // Tier 3a: if the app declared a layout, route navigation into its default
-    // content region — the static shell (sidebar/toolbar/menubar) stays put.
-    const region = defaultRegion(appCache.getLayout(msg.brief));
+  // --- Region NAVIGATION: drill into a region (cacheable, destination-based). ---
+  if (isDrill && arg) {
+    const region = explicitTarget || defaultRegion(appCache.getLayout(msg.brief));
     if (region) {
       const rkey = pageKey(msg.brief, region + "::" + arg);
-      const rforce = msg.action === "reload";
-      if (!rforce) {
+      if (msg.action !== "reload") {
         const cached = pageCache.get(rkey);
         if (cached) {
           send({ type: "patch-region", windowId, target: region, html: cached });
           send({ type: "status", windowId, state: "ready" });
-          log.info({ windowId, rkey }, "region page cache hit");
+          log.info({ windowId, rkey }, "region cache hit");
           return;
         }
       }
@@ -287,13 +278,13 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
       let rprompt = buildRegionNavPrompt(msg.brief, act, arg, region);
       const fc = vfs.read(arg);
       if (fc !== undefined) rprompt += `\n\nCONTENTS of ${arg}:\n${fc}`;
-      await runRegion(windowId, msg.brief, region, rprompt, send, log, MODEL_FULL, rkey);
+      await runRegion(windowId, msg.brief, region, rprompt, send, log, MODEL_PATCH, rkey);
       return;
     }
 
+    // No declared region → full drill-in render (whole body, page cache).
     const key = pageKey(msg.brief, arg);
-    const force = msg.action === "reload";
-    if (!force) {
+    if (msg.action !== "reload") {
       const cachedHtml = pageCache.get(key);
       if (cachedHtml) {
         serveCached(windowId, cachedHtml, null, msg.sessionId, send);
@@ -301,12 +292,10 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
         return;
       }
     }
-    // reload → re-render the same target as a navigation.
     const action = msg.action === "reload" ? "navigate" : msg.action;
     let prompt = msg.sessionId
       ? buildEventPrompt(action, { ...(msg.detail as object), arg })
       : buildFirstEventPrompt(msg.brief, action, { ...(msg.detail as object), arg });
-    // Opening a known file → give the agent its contents to preview accurately.
     const fileContent = vfs.read(arg);
     if (fileContent !== undefined)
       prompt += `\n\nCONTENTS of ${arg}:\n${fileContent}`;
@@ -316,6 +305,13 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
       if (res.profile) appCache.setProfile(msg.brief, res.profile);
       if (res.layout) appCache.setLayout(msg.brief, res.layout);
     }
+    return;
+  }
+
+  // --- Region IN-PLACE edit (data-target, not a navigation): no cache. ---
+  if (explicitTarget && regionHtml) {
+    const prompt = buildRegionPrompt(msg.brief, msg.action, arg, explicitTarget, regionHtml);
+    await runRegion(windowId, msg.brief, explicitTarget, prompt, send, log, MODEL_PATCH);
     return;
   }
 
