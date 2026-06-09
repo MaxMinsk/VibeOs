@@ -17,6 +17,18 @@ function stripFences(text: string): string {
   return t.trim();
 }
 
+/** Pull out the layout manifest from a <!--vibe-layout {...}--> comment. */
+export function extractLayout(raw: string): unknown | null {
+  const m = raw.match(/<!--\s*vibe-layout\s*([\s\S]*?)-->/i);
+  if (!m) return null;
+  try {
+    const parsed = JSON.parse(m[1].trim());
+    return parsed && Array.isArray(parsed.regions) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Pull out the compact app profile from a <!--vibe-profile ...--> comment. */
 export function extractProfile(raw: string): string | null {
   const m = raw.match(/<!--\s*vibe-profile\s*([\s\S]*?)-->/i);

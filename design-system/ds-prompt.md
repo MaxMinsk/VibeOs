@@ -119,9 +119,9 @@ preview of its contents (text, image, document…) with a way back to the listin
 
 ## Trailers (metadata, profile, file ops)
 
-After the HTML body, you may append up to three trailing HTML comments, in this
-order, and nothing else after them: `vibe-meta`, then `vibe-profile`, then
-`vibe-fs`. Each is optional except as noted below.
+After the HTML body, you may append trailing HTML comments, in this order, and
+nothing else after them: `vibe-meta`, `vibe-layout`, `vibe-profile`, `vibe-fs`.
+Each is optional except as noted below.
 
 **Metadata** — on the **first** render of a new app only, a single comment with
 JSON metadata:
@@ -129,6 +129,32 @@ JSON metadata:
 ```
 <!--vibe-meta {"name":"Finder","glyph":"🗂","category":"system"} -->
 ```
+
+**Layout** — for apps with a **stable shell** (a sidebar of places, a toolbar, a
+menu bar) and a **changing content area**, declare the structure on the first
+render so the OS can update ONLY the content and never regenerate the shell:
+
+```
+<!--vibe-layout {"regions":[
+  {"id":"toolbar","role":"toolbar","static":true},
+  {"id":"places","role":"sidebar","static":true},
+  {"id":"content","role":"content","dynamic":true,"default":true}
+]} -->
+```
+
+Then build those regions with matching ids: `<nav id="places">…</nav>`,
+`<main id="content">…</main>`. Rules:
+- Mark the shell parts `static:true` — they are generated ONCE and never touched
+  again. Put the sidebar/places, toolbar and menu bar there.
+- Mark the changing area `dynamic:true` and one of them `default:true`.
+- **Keep these exact region ids on every render.**
+- After this, **navigation** (clicking a place/folder/link via
+  `data-action="open"/"navigate"`) automatically regenerates ONLY the default
+  content region — you'll be asked to return just `#content`'s inner HTML, and the
+  static shell stays. So design the sidebar/toolbar to be self-contained and put
+  everything that changes per-destination inside the content region.
+- Highlighting the selected sidebar item lives in the static shell — do it with a
+  tiny inline `onclick` (toggle a `.selected` class), not by regenerating.
 
 `name` = short display name, `glyph` = one emoji icon, `category` = one of
 `system | productivity | web | dev | media | fun | utility`.

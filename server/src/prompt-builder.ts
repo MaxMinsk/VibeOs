@@ -58,6 +58,29 @@ export function buildRegionPrompt(
 }
 
 /**
+ * Navigate inside an app with a stable shell — regenerate ONLY the default content
+ * region (Tier 3a). The static shell (sidebar/toolbar/menubar) stays untouched.
+ */
+export function buildRegionNavPrompt(
+  brief: string,
+  action: string,
+  arg: unknown,
+  regionId: string,
+): string {
+  return [
+    `The user navigated inside this app. Regenerate ONLY the content region`,
+    `"#${regionId}" for this destination — the app's static shell (sidebar,`,
+    `toolbar, menu bar) stays exactly as it is, do NOT re-emit it.`,
+    `Return ONLY the new INNER HTML of #${regionId} — no wrapping element, no other`,
+    `regions, no <!--vibe-* --> trailers. Match the APP LAYOUT and APP PROFILE.`,
+    "",
+    `APP: ${brief}`,
+    `ACTION: ${action}`,
+    `DESTINATION: ${JSON.stringify(arg)}`,
+  ].join("\n");
+}
+
+/**
  * First interaction on a window that was opened from cache (no live session yet).
  * Re-establishes context from the brief so the new session can continue.
  */

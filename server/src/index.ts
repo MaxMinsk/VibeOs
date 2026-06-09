@@ -9,18 +9,40 @@ import {
   buildEventPrompt,
   buildFirstEventPrompt,
   buildRegionPrompt,
+  buildRegionNavPrompt,
 } from "./prompt-builder.js";
 import {
   sanitizeApp,
   sanitizePreview,
   extractFsOps,
   extractProfile,
+  extractLayout,
   type AppMeta,
 } from "./sanitizer.js";
 import { buildSrcDoc, buildPreviewDoc } from "./wrapper.js";
-import { appCache } from "./app-cache.js";
+import { appCache, type LayoutManifest } from "./app-cache.js";
 import { pageCache, pageKey } from "./page-cache.js";
 import { vfs, type FsOp } from "./vfs.js";
+
+/** The app's declared region structure, injected so the agent keeps it stable. */
+function layoutBlock(brief: string): string {
+  const l = appCache.getLayout(brief);
+  return l
+    ? "\n\nAPP LAYOUT (this app's regions — STATIC regions are the shell and must " +
+        "NOT be regenerated; update only the relevant dynamic region; keep these " +
+        "exact region ids):\n" + JSON.stringify(l.regions)
+    : "";
+}
+
+/** The default dynamic content region of an app, if it declared one. */
+function defaultRegion(layout: LayoutManifest | undefined): string {
+  if (!layout) return "";
+  const r =
+    layout.regions.find((x) => x.default && !x.static) ??
+    layout.regions.find((x) => x.role === "content" && !x.static) ??
+    layout.regions.find((x) => x.dynamic && !x.static);
+  return r?.id ?? "";
+}
 
 /** The app's evolving design/state digest, injected to keep it consistent. */
 function profileBlock(brief: string): string {
@@ -120,6 +142,7 @@ async function runAndRender(
   meta: ReturnType<typeof sanitizeApp>["meta"];
   sessionId: string | null;
   profile: string | null;
+  layout: LayoutManifest | null;
 } | null> {
   send({ type: "status", windowId, state: "thinking" });
   try {
@@ -140,7 +163,7 @@ async function runAndRender(
 
     const model = patchMode ? MODEL_PATCH : MODEL_FULL;
     const { text, sessionId, cacheReadTokens } = await runApp({
-      prompt: prompt + profileBlock(brief) + fsBlock(),
+      prompt: prompt + layoutBlock(brief) + profileBlock(brief) + fsBlock(),
       resumeSessionId,
       model,
       onDelta,
@@ -149,13 +172,14 @@ async function runAndRender(
     const ops = extractFsOps(text) as FsOp[];
     if (ops.length && vfs.apply(ops)) pageCache.clear();
     const profile = extractProfile(text);
+    const layout = extractLayout(text) as LayoutManifest | null;
     const { html, meta } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty render");
     if (patchMode) send({ type: "patch", windowId, html });
     else send({ type: "render", windowId, srcdoc: buildSrcDoc(html), meta, sessionId, done: true });
     send({ type: "status", windowId, state: "ready" });
     log.info({ windowId, patchMode, cacheReadTokens }, "rendered");
-    return { html, meta, sessionId, profile };
+    return { html, meta, sessionId, profile, layout };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.error({ err, windowId }, "render failed");
@@ -173,15 +197,18 @@ async function runRegion(
   prompt: string,
   send: Send,
   log: typeof app.log,
+  model: string = MODEL_PATCH,
+  cacheKey?: string,
 ) {
   send({ type: "status", windowId, state: "thinking" });
   try {
     const { text } = await runApp({
-      prompt: prompt + profileBlock(brief) + fsBlock(),
-      model: MODEL_PATCH, // small targeted change → fast model
+      prompt: prompt + layoutBlock(brief) + profileBlock(brief) + fsBlock(),
+      model,
     });
     const { html } = sanitizeApp(text);
     if (!html.trim()) throw new Error("empty region");
+    if (cacheKey) pageCache.put(cacheKey, html);
     send({ type: "patch-region", windowId, target, html });
     send({ type: "status", windowId, state: "ready" });
     log.info({ windowId, target }, "region patched");
@@ -221,6 +248,7 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     if (res) {
       appCache.put(msg.brief, res.html, res.meta);
       if (res.profile) appCache.setProfile(msg.brief, res.profile);
+      if (res.layout) appCache.setLayout(msg.brief, res.layout);
     }
     return;
   }
@@ -240,6 +268,29 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     ? String((msg.detail as { arg?: unknown }).arg ?? "")
     : "";
   if (DRILL_ACTIONS.has(msg.action) && arg) {
+    // Tier 3a: if the app declared a layout, route navigation into its default
+    // content region — the static shell (sidebar/toolbar/menubar) stays put.
+    const region = defaultRegion(appCache.getLayout(msg.brief));
+    if (region) {
+      const rkey = pageKey(msg.brief, region + "::" + arg);
+      const rforce = msg.action === "reload";
+      if (!rforce) {
+        const cached = pageCache.get(rkey);
+        if (cached) {
+          send({ type: "patch-region", windowId, target: region, html: cached });
+          send({ type: "status", windowId, state: "ready" });
+          log.info({ windowId, rkey }, "region page cache hit");
+          return;
+        }
+      }
+      const act = msg.action === "reload" ? "navigate" : msg.action;
+      let rprompt = buildRegionNavPrompt(msg.brief, act, arg, region);
+      const fc = vfs.read(arg);
+      if (fc !== undefined) rprompt += `\n\nCONTENTS of ${arg}:\n${fc}`;
+      await runRegion(windowId, msg.brief, region, rprompt, send, log, MODEL_FULL, rkey);
+      return;
+    }
+
     const key = pageKey(msg.brief, arg);
     const force = msg.action === "reload";
     if (!force) {
@@ -263,6 +314,7 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     if (res) {
       pageCache.put(key, res.html);
       if (res.profile) appCache.setProfile(msg.brief, res.profile);
+      if (res.layout) appCache.setLayout(msg.brief, res.layout);
     }
     return;
   }
@@ -273,6 +325,7 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     : buildFirstEventPrompt(msg.brief, msg.action, msg.detail);
   const res = await runAndRender(windowId, msg.brief, prompt, msg.sessionId ?? undefined, send, log, true);
   if (res?.profile) appCache.setProfile(msg.brief, res.profile);
+  if (res?.layout) appCache.setLayout(msg.brief, res.layout);
 }
 
 try {

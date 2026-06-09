@@ -3,6 +3,17 @@ import { resolve } from "node:path";
 import { ROOT } from "./config.js";
 import type { AppMeta } from "./sanitizer.js";
 
+export interface LayoutRegion {
+  id: string;
+  role?: string;
+  static?: boolean;
+  dynamic?: boolean;
+  default?: boolean;
+}
+export interface LayoutManifest {
+  regions: LayoutRegion[];
+}
+
 export interface CachedApp {
   /** Normalized brief = cache key. */
   key: string;
@@ -15,6 +26,8 @@ export interface CachedApp {
   html: string;
   /** Compact evolving design/state digest, injected to keep the app consistent. */
   profile?: string;
+  /** Declared region structure (shell + dynamic regions) — Tier 3. */
+  layout?: LayoutManifest;
   createdAt: string;
   lastOpened: string;
   opens: number;
@@ -84,6 +97,17 @@ class AppCache {
 
   getProfile(brief: string): string | undefined {
     return this.map.get(normalizeBrief(brief))?.profile;
+  }
+
+  getLayout(brief: string): LayoutManifest | undefined {
+    return this.map.get(normalizeBrief(brief))?.layout;
+  }
+
+  setLayout(brief: string, layout: LayoutManifest) {
+    const e = this.map.get(normalizeBrief(brief));
+    if (!e) return;
+    e.layout = layout;
+    this.persist();
   }
 
   /** Update an app's profile digest (no-op if the app isn't cached yet). */
