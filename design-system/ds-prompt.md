@@ -260,6 +260,35 @@ zero latency — do NOT round-trip to open a menu. Menu items behave like any co
 </div>
 ```
 
+**Nested windows / desktop simulators.** An app can host its OWN real windows —
+use this for a Windows-98 / macOS desktop simulator, an IDE, or any multi-window
+app. Mark a window container `data-window` (use the `.vibe-win` chrome), put
+`data-drag-handle` on its titlebar, `data-window-action="close|minimize|maximize"`
+on its control buttons, and optionally a `data-resize="se"` handle. The OS makes
+these **drag/resize/focus/close work locally** — NO agent round-trip for window
+mechanics. The window position is `position:absolute` inside a `position:relative`
+desktop area. Example (a draggable window on a mini desktop):
+
+```
+<div style="position:relative;height:100%;background:#0a7">
+  <div class="vibe-win" data-window style="left:40px;top:30px;width:320px;height:200px">
+    <div class="vibe-win-titlebar" data-drag-handle>
+      <span style="flex:1">Notepad</span>
+      <button data-window-action="minimize">_</button>
+      <button data-window-action="maximize">□</button>
+      <button data-window-action="close">×</button>
+    </div>
+    <div class="vibe-win-body">…window content…</div>
+    <span data-resize="se"></span>
+  </div>
+</div>
+```
+
+To OPEN a new such window from a click (e.g. a Start-menu/dock item), use
+`data-action`/`data-target` so the agent adds another `.vibe-win` — the new window
+is then draggable automatically. Build believable per-OS chrome (Win98 grey beveled
+title, macOS traffic lights, etc.) by styling `.vibe-win`/`.vibe-win-titlebar`.
+
 **Terminal:** `.vibe-terminal` (preformatted, dark scrollback); `.prompt` for the
 prompt glyph; `.vibe-terminal input` styling is handled by the DS (don't add inline
 styles to it). Terminal/REPL/console/shell apps MUST be interactive with a command

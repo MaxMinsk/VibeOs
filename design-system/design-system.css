@@ -513,3 +513,58 @@ body {
 .vibe-tile .glyph {
   font-size: 34px;
 }
+
+/* ---- Nested windows (data-window) — for desktop simulators & multi-window apps */
+.vibe-win {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  min-height: 90px;
+  background: var(--vibe-bg);
+  border: 0.5px solid var(--vibe-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+.vibe-win-titlebar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--vibe-bg-elev);
+  border-bottom: 0.5px solid var(--vibe-border);
+  cursor: move;
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+.vibe-win-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 10px;
+}
+.vibe-win-max {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0;
+}
+.vibe-win-min {
+  height: auto !important;
+  min-height: 0;
+}
+.vibe-win-min .vibe-win-body {
+  display: none;
+}
+[data-resize] {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}

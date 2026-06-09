@@ -94,8 +94,109 @@
     openMenu = menu;
   }
 
+  // ---- Nested window runtime ---------------------------------------------
+  // Any generated element marked [data-window] becomes a real window: focus by
+  // z-index, drag via [data-drag-handle], resize via [data-resize], and
+  // close/min/max via [data-window-action] — all locally, no agent call. This is
+  // what makes an app (e.g. a Windows-98 desktop) host its own working windows.
+  var winZ = 1000;
+  function nearestWindow(el) {
+    return el && el.closest ? el.closest("[data-window]") : null;
+  }
+  function raiseWindow(win) {
+    if (win) win.style.zIndex = String(++winZ);
+  }
+
+  // Focus (raise) on pointerdown anywhere inside a window.
+  document.addEventListener(
+    "pointerdown",
+    function (e) {
+      raiseWindow(nearestWindow(e.target));
+    },
+    true,
+  );
+
+  // Drag from a titlebar / [data-drag-handle].
+  document.addEventListener("pointerdown", function (e) {
+    var handle = e.target.closest && e.target.closest("[data-drag-handle]");
+    if (!handle) return;
+    if (e.target.closest("[data-window-action], button, a, input, select, textarea"))
+      return; // don't drag when grabbing a control
+    var win = nearestWindow(handle);
+    if (!win || win.classList.contains("vibe-win-max")) return;
+    e.preventDefault();
+    win.style.position = win.style.position || "absolute";
+    var sx = e.clientX,
+      sy = e.clientY;
+    var ox = parseFloat(win.style.left) || win.offsetLeft;
+    var oy = parseFloat(win.style.top) || win.offsetTop;
+    function move(ev) {
+      win.style.left = ox + (ev.clientX - sx) + "px";
+      win.style.top = Math.max(0, oy + (ev.clientY - sy)) + "px";
+    }
+    function up() {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+    }
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  });
+
+  // Resize from [data-resize="se|e|s|sw|ne|nw|n|w"].
+  document.addEventListener("pointerdown", function (e) {
+    var h = e.target.closest && e.target.closest("[data-resize]");
+    if (!h) return;
+    var win = nearestWindow(h);
+    if (!win || win.classList.contains("vibe-win-max")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var dir = h.getAttribute("data-resize") || "se";
+    var sx = e.clientX,
+      sy = e.clientY;
+    var r = win.getBoundingClientRect();
+    var ox = parseFloat(win.style.left) || win.offsetLeft;
+    var oy = parseFloat(win.style.top) || win.offsetTop;
+    win.style.position = win.style.position || "absolute";
+    function move(ev) {
+      var dx = ev.clientX - sx,
+        dy = ev.clientY - sy;
+      if (dir.indexOf("e") > -1) win.style.width = Math.max(140, r.width + dx) + "px";
+      if (dir.indexOf("s") > -1) win.style.height = Math.max(80, r.height + dy) + "px";
+      if (dir.indexOf("w") > -1) {
+        var w = Math.max(140, r.width - dx);
+        win.style.width = w + "px";
+        win.style.left = ox + (r.width - w) + "px";
+      }
+      if (dir.indexOf("n") > -1) {
+        var hh = Math.max(80, r.height - dy);
+        win.style.height = hh + "px";
+        win.style.top = oy + (r.height - hh) + "px";
+      }
+    }
+    function up() {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+    }
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  });
+
   document.addEventListener("click", function (e) {
     if (e.target.closest("input, textarea, select")) return; // editing a field
+    // Window control buttons (close / minimize / maximize) — local.
+    var wa = e.target.closest("[data-window-action]");
+    if (wa) {
+      e.preventDefault();
+      var win = nearestWindow(wa);
+      var act = wa.getAttribute("data-window-action");
+      if (win) {
+        if (act === "close") win.remove();
+        else if (act === "minimize") win.classList.toggle("vibe-win-min");
+        else if (act === "maximize" || act === "restore")
+          win.classList.toggle("vibe-win-max");
+      }
+      return;
+    }
     // Menu trigger → open/close its popover locally (no agent call).
     var trig = e.target.closest("[data-menu]");
     if (trig) {
