@@ -181,8 +181,85 @@
     document.addEventListener("pointerup", up);
   });
 
+  // Open a NEW nested window locally, then ask the agent to fill its content
+  // (themed as an app of THIS environment — e.g. a Windows-98 program).
+  var nwin = 0;
+  function buildNestedWindow(title, bodyId) {
+    var tpl = document.querySelector("template[data-window-template]");
+    var win;
+    if (tpl && tpl.content.firstElementChild) {
+      win = tpl.content.firstElementChild.cloneNode(true);
+      if (!win.hasAttribute("data-window")) win.setAttribute("data-window", "");
+      var ts = win.querySelector("[data-slot='title']");
+      if (ts) ts.textContent = title;
+      var bs =
+        win.querySelector("[data-slot='content']") ||
+        win.querySelector(".vibe-win-body");
+      if (bs) {
+        bs.id = bodyId;
+        bs.textContent = "Loading…";
+      }
+    } else {
+      win = document.createElement("div");
+      win.className = "vibe-win";
+      win.setAttribute("data-window", "");
+      var bar = document.createElement("div");
+      bar.className = "vibe-win-titlebar";
+      bar.setAttribute("data-drag-handle", "");
+      var t = document.createElement("span");
+      t.style.flex = "1";
+      t.textContent = title;
+      bar.appendChild(t);
+      ["minimize", "maximize", "close"].forEach(function (a) {
+        var b = document.createElement("button");
+        b.setAttribute("data-window-action", a);
+        b.textContent = a === "close" ? "×" : a === "maximize" ? "□" : "_";
+        bar.appendChild(b);
+      });
+      var body = document.createElement("div");
+      body.className = "vibe-win-body";
+      body.id = bodyId;
+      body.textContent = "Loading…";
+      var rz = document.createElement("span");
+      rz.setAttribute("data-resize", "se");
+      win.appendChild(bar);
+      win.appendChild(body);
+      win.appendChild(rz);
+    }
+    if (!win.style.width) win.style.width = "440px";
+    if (!win.style.height) win.style.height = "320px";
+    win.style.left = 36 + (nwin % 6) * 26 + "px";
+    win.style.top = 36 + (nwin % 6) * 26 + "px";
+    return win;
+  }
+  function openNestedWindow(appArg, title) {
+    nwin++;
+    var bodyId = "nwin-" + nwin;
+    var surface =
+      document.querySelector("[data-window-surface]") ||
+      document.getElementById("vibe-root") ||
+      document.body;
+    if (getComputedStyle(surface).position === "static")
+      surface.style.position = "relative";
+    var win = buildNestedWindow(title, bodyId);
+    surface.appendChild(win);
+    raiseWindow(win);
+    send("launch-window", appArg, bodyId); // agent fills #bodyId
+  }
+
   document.addEventListener("click", function (e) {
     if (e.target.closest("input, textarea, select")) return; // editing a field
+    // Launch a new nested app window (Start menu / desktop icon / app search).
+    var lnch = e.target.closest("[data-launch]");
+    if (lnch) {
+      e.preventDefault();
+      closeMenu();
+      openNestedWindow(
+        lnch.getAttribute("data-launch"),
+        lnch.getAttribute("data-launch-title") || lnch.getAttribute("data-launch"),
+      );
+      return;
+    }
     // Window control buttons (close / minimize / maximize) — local.
     var wa = e.target.closest("[data-window-action]");
     if (wa) {

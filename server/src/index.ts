@@ -10,6 +10,7 @@ import {
   buildFirstEventPrompt,
   buildRegionPrompt,
   buildRegionNavPrompt,
+  buildLaunchWindowPrompt,
 } from "./prompt-builder.js";
 import {
   sanitizeApp,
@@ -272,6 +273,20 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
   const regionHtml = typeof d.regionHtml === "string" ? d.regionHtml : "";
   const arg = d.arg != null ? String(d.arg) : "";
   const isDrill = DRILL_ACTIONS.has(msg.action);
+
+  // --- Launch an app INSIDE this environment (nested window content). ---
+  if (msg.action === "launch-window" && explicitTarget && arg) {
+    const lkey = pageKey(msg.brief, "launch::" + arg);
+    const cached = pageCache.get(lkey);
+    if (cached) {
+      send({ type: "patch-region", windowId, target: explicitTarget, html: cached });
+      send({ type: "status", windowId, state: "ready" });
+      return;
+    }
+    const prompt = buildLaunchWindowPrompt(msg.brief, arg, explicitTarget);
+    await runRegion(windowId, msg.brief, explicitTarget, prompt, send, log, MODEL_PATCH, lkey);
+    return;
+  }
 
   // --- Region NAVIGATION: drill into a region (cacheable, destination-based). ---
   if (isDrill && arg) {

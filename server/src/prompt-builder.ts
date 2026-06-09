@@ -58,6 +58,28 @@ export function buildRegionPrompt(
 }
 
 /**
+ * Fill a NEW nested window with an app launched INSIDE another environment
+ * (e.g. a Windows-98 program inside a Win98 desktop). The OS already drew the
+ * window frame; the agent returns only the window's content.
+ */
+export function buildLaunchWindowPrompt(
+  envBrief: string,
+  appArg: string,
+  target: string,
+): string {
+  return [
+    `Generate the INNER HTML of region "#${target}" — it is the content of a NEW`,
+    `window running the app "${appArg}" INSIDE this environment:`,
+    `"${envBrief}".`,
+    "Make it look and behave like an app OF THAT ENVIRONMENT (match its era/theme —",
+    "e.g. a genuine Windows 98 program if the environment is Win98), and be",
+    "functional (use local JS for instant interactivity, data-action where it needs",
+    "the agent). The OS draws the window frame, so return ONLY the inner content —",
+    "no window chrome, no wrapping element, no <!--vibe-* --> trailers.",
+  ].join("\n");
+}
+
+/**
  * Navigate inside an app with a stable shell — regenerate ONLY the default content
  * region (Tier 3a). The static shell (sidebar/toolbar/menubar) stays untouched.
  */

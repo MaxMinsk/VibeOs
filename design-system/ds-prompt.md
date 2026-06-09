@@ -284,10 +284,26 @@ desktop area. Example (a draggable window on a mini desktop):
 </div>
 ```
 
-To OPEN a new such window from a click (e.g. a Start-menu/dock item), use
-`data-action`/`data-target` so the agent adds another `.vibe-win` — the new window
-is then draggable automatically. Build believable per-OS chrome (Win98 grey beveled
-title, macOS traffic lights, etc.) by styling `.vibe-win`/`.vibe-win-titlebar`.
+**Launching apps inside the environment.** To let the user OPEN programs (Start
+menu item, desktop icon, app search result), put `data-launch="<app name>"` (and
+optional `data-launch-title`) on the trigger. The OS then: (1) opens a NEW draggable
+window locally on the desktop surface, and (2) asks the agent to generate that
+app's CONTENT, themed as a program OF THIS environment (a real Win98 Notepad inside
+a Win98 desktop). Existing windows are untouched. So a Windows-98 desktop's Start →
+Programs → Notepad really opens a Win98 Notepad window.
+
+- Mark the desktop area where windows live with `data-window-surface` (must be
+  `position:relative`; the OS places new windows there).
+- To give launched windows your authentic chrome, declare ONE
+  `<template data-window-template>` containing your `.vibe-win`-style frame with
+  `data-drag-handle` on the titlebar, `[data-slot="title"]` for the title and
+  `[data-slot="content"]` for the body; the OS clones it per launch. If you omit
+  the template, a default frame is used.
+
+Example Start-menu item: `<div class="vibe-menu-item" data-launch="Notepad">📝 Notepad</div>`.
+
+For windows you draw inline up-front, build believable per-OS chrome (Win98 grey
+beveled title, macOS traffic lights, etc.) by styling `.vibe-win`/`.vibe-win-titlebar`.
 
 **Terminal:** `.vibe-terminal` (preformatted, dark scrollback); `.prompt` for the
 prompt glyph; `.vibe-terminal input` styling is handled by the DS (don't add inline
