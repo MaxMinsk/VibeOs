@@ -1,7 +1,7 @@
 import type { AppDef } from "../apps";
 import { WindowView } from "./window-view";
 import type { AgentClient } from "../agent/client";
-import type { ServerMessage } from "../agent/protocol";
+import type { ServerMessage, ClientMessage } from "../agent/protocol";
 import type { RunningApp } from "../desktop/dock";
 import { sound } from "../desktop/sound";
 import {
@@ -34,6 +34,7 @@ export interface WindowManagerHooks {
 
 export class WindowManager {
   private readonly views = new Map<string, WindowView>();
+  private readonly lastEvent = new Map<string, ClientMessage>();
   private nextZ = 100;
   private activeId: string | null = null;
   private cascade = 0;
@@ -149,18 +150,29 @@ export class WindowManager {
 
   private onIframeMessage(e: MessageEvent) {
     const data = e.data;
-    if (!data || data.type !== "vibe-event") return;
-    const view = this.views.get(data.windowId);
-    if (!view) return;
-    view.beginUpdate();
-    this.agent.send({
-      type: "event",
-      windowId: data.windowId,
-      sessionId: view.state.sessionId,
-      brief: view.state.brief,
-      action: data.event?.action,
-      detail: data.event,
-    });
+    if (!data) return;
+    if (data.type === "vibe-event") {
+      const view = this.views.get(data.windowId);
+      if (!view) return;
+      view.beginUpdate();
+      const msg: ClientMessage = {
+        type: "event",
+        windowId: data.windowId,
+        sessionId: view.state.sessionId,
+        brief: view.state.brief,
+        action: data.event?.action,
+        detail: data.event,
+      };
+      this.lastEvent.set(data.windowId, msg);
+      this.agent.send(msg);
+    } else if (data.type === "vibe-region-miss") {
+      // The targeted region wasn't found → recover with a full re-render.
+      const view = this.views.get(data.windowId);
+      const prev = this.lastEvent.get(data.windowId);
+      if (!view || !prev || prev.type !== "event") return;
+      view.beginUpdate();
+      this.agent.send({ ...prev, forceFull: true });
+    }
   }
 
   closeActive() {

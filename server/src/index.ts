@@ -253,6 +253,19 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     return;
   }
 
+  // --- Recovery: force a full re-render (e.g. after a region miss). ---
+  if (msg.type === "event" && msg.forceFull) {
+    const prompt = msg.sessionId
+      ? buildEventPrompt(msg.action, msg.detail)
+      : buildFirstEventPrompt(msg.brief, msg.action, msg.detail);
+    const res = await runAndRender(windowId, msg.brief, prompt, msg.sessionId ?? undefined, send, log);
+    if (res) {
+      if (res.profile) appCache.setProfile(msg.brief, res.profile);
+      if (res.layout) appCache.setLayout(msg.brief, res.layout);
+    }
+    return;
+  }
+
   // --- Resolve region + arg from the event. ---
   const d = (msg.detail ?? {}) as { target?: unknown; regionHtml?: unknown; arg?: unknown };
   const explicitTarget = typeof d.target === "string" ? d.target : "";

@@ -286,7 +286,15 @@
     if (msg.type === "vibe-patch" && typeof msg.html === "string") {
       patchEl(document.getElementById("vibe-root"), msg.html);
     } else if (msg.type === "vibe-patch-region" && typeof msg.html === "string") {
-      patchEl(document.getElementById(msg.target), msg.html);
+      var el = document.getElementById(msg.target);
+      if (el) patchEl(el, msg.html);
+      // Region not found (agent renamed/removed it) → ask the OS to fully
+      // re-render so we never end up with a stale/empty window.
+      else
+        parent.postMessage(
+          { type: "vibe-region-miss", windowId: WINDOW_ID, target: msg.target },
+          "*",
+        );
     }
   });
 })();

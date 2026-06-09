@@ -14,6 +14,8 @@ export type ClientMessage =
       brief: string;
       action: string;
       detail: unknown;
+      /** Force a full re-render (recovery from a region miss). */
+      forceFull?: boolean;
     }
   | { type: "close"; windowId: string };
 
