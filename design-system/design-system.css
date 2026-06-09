@@ -12,8 +12,8 @@
   --vibe-bg-elev: #f5f5f7;
   --vibe-bg-sidebar: #ececef;
   --vibe-text: #1d1d1f;
-  --vibe-text-2: #6e6e73;
-  --vibe-text-3: #9a9aa0;
+  --vibe-text-2: #55555b;
+  --vibe-text-3: #6e6e73;
   --vibe-border: rgba(0, 0, 0, 0.12);
   --vibe-border-strong: rgba(0, 0, 0, 0.22);
   --vibe-hover: rgba(0, 0, 0, 0.05);
@@ -32,22 +32,17 @@
   --vibe-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --vibe-bg: #1e1e1e;
-    --vibe-bg-elev: #2a2a2c;
-    --vibe-bg-sidebar: #242426;
-    --vibe-text: #f5f5f7;
-    --vibe-text-2: #a1a1a6;
-    --vibe-text-3: #6e6e73;
-    --vibe-border: rgba(255, 255, 255, 0.14);
-    --vibe-border-strong: rgba(255, 255, 255, 0.24);
-    --vibe-hover: rgba(255, 255, 255, 0.07);
-  }
-}
+/* Note: VibeOs apps are a LIGHT environment by default (like macOS Finder). We do
+   NOT auto-switch to dark via prefers-color-scheme — that surprised the agent
+   (which designs for light) and made text low-contrast on a flipped background.
+   Apps that want a dark look theme themselves explicitly. */
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  color-scheme: light; /* force light native controls regardless of OS theme */
 }
 
 html,
