@@ -53,11 +53,52 @@
       .slice(0, 80);
   }
 
+  // ---- Popover menus (open instantly, no regeneration) -------------------
+  var openMenu = null;
+  function closeMenu() {
+    if (openMenu) {
+      openMenu.classList.remove("open");
+      openMenu = null;
+    }
+  }
+  function esc(id) {
+    return window.CSS && CSS.escape ? CSS.escape(id) : id;
+  }
+  function toggleMenu(trigger) {
+    var id = trigger.getAttribute("data-menu");
+    var menu = document.querySelector('[data-menu-content="' + esc(id) + '"]');
+    if (!menu) return;
+    if (openMenu === menu) {
+      closeMenu();
+      return;
+    }
+    closeMenu();
+    menu.classList.add("open");
+    var r = trigger.getBoundingClientRect();
+    var mw = menu.offsetWidth,
+      mh = menu.offsetHeight;
+    var left = r.left,
+      top = r.bottom + 4;
+    if (left + mw > window.innerWidth - 6) left = window.innerWidth - mw - 6;
+    if (top + mh > window.innerHeight - 6) top = r.top - mh - 4;
+    menu.style.left = Math.max(6, left) + "px";
+    menu.style.top = Math.max(6, top) + "px";
+    openMenu = menu;
+  }
+
   document.addEventListener("click", function (e) {
     if (e.target.closest("input, textarea, select")) return; // editing a field
+    // Menu trigger → open/close its popover locally (no agent call).
+    var trig = e.target.closest("[data-menu]");
+    if (trig) {
+      e.preventDefault();
+      toggleMenu(trig);
+      return;
+    }
     var t = e.target.closest("[data-action]");
     if (t) {
       e.preventDefault();
+      closeMenu();
       send(t.getAttribute("data-action"), t.getAttribute("data-arg"));
       return;
     }
@@ -65,6 +106,7 @@
     var a = e.target.closest("a");
     if (a) {
       e.preventDefault();
+      closeMenu();
       var href = a.getAttribute("href");
       var target = href && href !== "#" ? href : a.textContent.trim();
       if (target) send("navigate", target);
@@ -76,8 +118,11 @@
     var c = e.target.closest(CLICKABLE);
     if (c && !c.disabled && !c.hasAttribute("onclick") && !c.closest("form")) {
       e.preventDefault();
+      closeMenu();
       send("activate", label(c));
+      return;
     }
+    closeMenu(); // clicked empty space
   });
 
   // Submit on forms (or Enter inside a search box).
@@ -90,6 +135,10 @@
 
   // Enter inside a text field submits its action (address bar, search, …).
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      closeMenu();
+      return;
+    }
     if (e.key !== "Enter" || e.shiftKey) return;
     var inp = e.target;
     if (!inp.matches || !inp.matches("input[data-action], .vibe-search input"))

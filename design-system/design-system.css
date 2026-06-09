@@ -438,6 +438,16 @@ body {
   margin: 5px 0;
 }
 
+/* Popover menus: hidden until the OS opens them (positioned by the bridge). */
+[data-menu-content] {
+  display: none;
+}
+[data-menu-content].open {
+  display: block;
+  position: fixed;
+  z-index: 9999;
+}
+
 /* ---- Terminal / code ------------------------------------------------------ */
 .vibe-terminal {
   font-family: var(--vibe-mono);

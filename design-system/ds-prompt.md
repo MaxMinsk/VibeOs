@@ -16,17 +16,26 @@ including their content, in a way that is internally consistent and believable.
 - Your app runs in a sandboxed iframe with **no network access**, so it cannot
   leak anything. Make apps genuinely functional (see Interactivity below).
 - **No dead controls.** EVERY clickable element — button, link, list row, sidebar
-  item, tab, menu item, toggle, icon — MUST do something. Either handle it locally
-  with an inline `onclick`/`onchange` (so the OS sees it's wired), or give it a
-  `data-action` so clicking it asks the agent to respond. Never render a
-  button/link that does nothing. When in doubt, add `data-action` — a click should
-  always produce a result (an update or a newly generated screen).
+  item, tab, menu item, toggle, icon — MUST do something. Wire it one of three ways:
+  inline `onclick`/`onchange` (local), `data-action` (generate a response), or
+  `data-menu` (open a popover menu). Never render a button/link that does nothing.
+  When in doubt, add `data-action` — a click should always produce a result.
 - Inputs/selects/textareas that matter should have a `name` attribute.
-- **Readability first.** Primary content — file/row names, titles, body text — must
-  be high-contrast and clearly legible: use `var(--vibe-text)` (or a DS class like
-  `.vibe-row-title`). Never use `color: transparent`, gradient/clipped text, or very
-  light greys for text the user needs to read. Reserve `--vibe-text-2/3` for
-  secondary/metadata only.
+- **Readability is non-negotiable.** Every piece of text must clearly contrast its
+  background.
+  - Default to the DS **light surfaces**. Do NOT put dark backgrounds behind list
+    rows, tables, sidebars or content in a normal app. Use a dark surface ONLY for a
+    genuinely dark-themed app (terminal, code editor) — and then make ALL text on it
+    light.
+  - Don't recolor or reduce the opacity of DS components. Sidebar items
+    (`.vibe-sidebar-item`), file names, table cells and list rows must stay legible
+    — never faint grey on light, never grey on dark.
+  - Secondary metadata (size/date/kind) may use `var(--vibe-text-2)` but ONLY on a
+    light surface. `--vibe-text-3` is for the faintest hints only.
+  - Never use `color: transparent`, gradient/clipped text, or low-opacity text for
+    anything the user needs to read.
+  - Before finishing, sanity-check: would a person read every label easily? If any
+    text looks faint against its background, fix the color or the background.
 - Keep it self-contained and plausible. Fill with realistic fake content that
   fits the app's brief and personality.
 
@@ -184,6 +193,23 @@ Segmented: `.vibe-segmented > button` (mark active with `class="selected"`).
 **Badges:** `.vibe-badge`, modifiers `--accent` `--green` `--danger`.
 
 **Menu:** `.vibe-menu` › `.vibe-menu-item`, `.vibe-menu-sep`.
+
+**Dropdown / popover menus (open instantly — NO regeneration).** For menu-bar
+menus (File, Edit…), dropdowns and context menus, author them inline: give the
+trigger `data-menu="<id>"` and place a hidden `.vibe-menu` with
+`data-menu-content="<id>"`. The OS opens/positions/closes the popover locally with
+zero latency — do NOT round-trip to open a menu. Menu items behave like any control
+(`data-action` to generate a response, or inline `onclick` for local actions).
+
+```
+<button class="vibe-btn vibe-btn--ghost" data-menu="file">File</button>
+<div class="vibe-menu" data-menu-content="file">
+  <div class="vibe-menu-item" data-action="new-file">New</div>
+  <div class="vibe-menu-item" data-action="open-file">Open…</div>
+  <div class="vibe-menu-sep"></div>
+  <div class="vibe-menu-item" data-action="close">Close Window</div>
+</div>
+```
 
 **Terminal:** `.vibe-terminal` (preformatted, dark scrollback); `.prompt` for the
 prompt glyph; `.vibe-terminal input` styling is handled by the DS (don't add inline
