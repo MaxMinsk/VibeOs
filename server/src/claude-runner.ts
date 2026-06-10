@@ -1,4 +1,8 @@
-import { query, type Options } from "@anthropic-ai/claude-agent-sdk";
+import {
+  query,
+  type Options,
+  SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
+} from "@anthropic-ai/claude-agent-sdk";
 import { CLAUDE_BIN } from "./config.js";
 import { getSystemPrompt } from "./prompt-builder.js";
 
@@ -28,7 +32,10 @@ export interface RunResult {
  */
 export async function runApp(opts: RunOpts): Promise<RunResult> {
   const options: Options = {
-    systemPrompt: getSystemPrompt(),
+    // Array form with the boundary marks our (static) DS contract as a globally
+    // cacheable prefix → cross-call prompt caching. Dynamic per-turn context lives
+    // in the user prompt, so the system prefix stays byte-identical and hits cache.
+    systemPrompt: [getSystemPrompt(), SYSTEM_PROMPT_DYNAMIC_BOUNDARY],
     permissionMode: "bypassPermissions",
     allowedTools: [],
     // Isolation: don't load the user's settings, CLAUDE.md, skills, or MCP
