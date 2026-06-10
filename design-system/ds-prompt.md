@@ -286,18 +286,32 @@ app. Mark a window container `data-window` (use the `.vibe-win` chrome), put
 on its control buttons, and optionally a `data-resize="se"` handle. The OS makes
 these **drag/resize/focus/close work locally** — NO agent round-trip for window
 mechanics. The window position is `position:absolute` inside a `position:relative`
-desktop area. Example (a draggable window on a mini desktop):
+desktop area.
+
+> ⚠️ **For a desktop with windows already open, you MUST leave each window body as
+> an empty slot `data-node="<what the window shows>"` and NOT write its content
+> yourself.** Your job is the desktop surface + the window FRAMES only. The OS then
+> generates every window's content IN PARALLEL (each its own generation, themed for
+> this OS). Writing all window contents inline is slow, serial and wrong — use slots.
+
+Example (a desktop whose two windows fill in parallel via slots):
 
 ```
 <div style="position:relative;height:100%;background:#0a7">
-  <div class="vibe-win" data-window style="left:40px;top:30px;width:320px;height:200px">
+  <div class="vibe-win" data-window style="left:40px;top:30px;width:360px;height:240px">
     <div class="vibe-win-titlebar" data-drag-handle>
-      <span style="flex:1">Notepad</span>
+      <span style="flex:1">My Computer</span>
       <button data-window-action="minimize">_</button>
       <button data-window-action="maximize">□</button>
       <button data-window-action="close">×</button>
     </div>
-    <div class="vibe-win-body">…window content…</div>
+    <div class="vibe-win-body" data-node="Windows 98 My Computer file explorer"></div>
+    <span data-resize="se"></span>
+  </div>
+  <div class="vibe-win" data-window style="left:200px;top:110px;width:360px;height:240px">
+    <div class="vibe-win-titlebar" data-drag-handle><span style="flex:1">Notepad</span>
+      <button data-window-action="close">×</button></div>
+    <div class="vibe-win-body" data-node="Windows 98 Notepad with a readme"></div>
     <span data-resize="se"></span>
   </div>
 </div>
