@@ -294,11 +294,18 @@
     if (t) {
       e.preventDefault();
       closeMenu();
-      send(
-        t.getAttribute("data-action"),
-        t.getAttribute("data-arg"),
-        t.getAttribute("data-target"),
-      );
+      var tgt = t.getAttribute("data-target");
+      // Auto-target: a navigation item (list row / sidebar item / [data-nav])
+      // without an explicit target updates its enclosing [data-region] — so a
+      // folder/email/file list browses in place without per-item data-target.
+      if (
+        !tgt &&
+        t.matches(".vibe-list-row, .vibe-sidebar-item, [data-nav]")
+      ) {
+        var reg = t.closest("[data-region][id]");
+        if (reg) tgt = reg.id;
+      }
+      send(t.getAttribute("data-action"), t.getAttribute("data-arg"), tgt);
       return;
     }
     // Any link without an explicit data-action becomes a navigation.

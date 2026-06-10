@@ -288,29 +288,33 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     return;
   }
 
-  // --- Region NAVIGATION: drill into a region (cacheable, destination-based). ---
-  if (isDrill && arg) {
-    const region = explicitTarget || defaultRegion(appCache.getLayout(msg.brief));
-    if (region) {
-      const rkey = pageKey(msg.brief, region + "::" + arg);
-      if (msg.action !== "reload") {
-        const cached = pageCache.get(rkey);
-        if (cached) {
-          send({ type: "patch-region", windowId, target: region, html: cached });
-          send({ type: "status", windowId, state: "ready" });
-          log.info({ windowId, rkey }, "region cache hit");
-          return;
-        }
+  // --- Region navigation/selection: a target region + an arg → regenerate ONLY
+  //     that region. Cached by region::arg, with a local indicator. Works for ANY
+  //     action verb (open / open-email / select / open-note …), and via the
+  //     layout's default region when no explicit data-target is given. ---
+  const navRegion =
+    explicitTarget || (isDrill && arg ? defaultRegion(appCache.getLayout(msg.brief)) : "");
+  if (navRegion && arg) {
+    const rkey = pageKey(msg.brief, navRegion + "::" + arg);
+    if (msg.action !== "reload") {
+      const cached = pageCache.get(rkey);
+      if (cached) {
+        send({ type: "patch-region", windowId, target: navRegion, html: cached });
+        send({ type: "status", windowId, state: "ready" });
+        log.info({ windowId, rkey }, "region cache hit");
+        return;
       }
-      const act = msg.action === "reload" ? "navigate" : msg.action;
-      let rprompt = buildRegionNavPrompt(msg.brief, act, arg, region);
-      const fc = vfs.read(arg);
-      if (fc !== undefined) rprompt += `\n\nCONTENTS of ${arg}:\n${fc}`;
-      await runRegion(windowId, msg.brief, region, rprompt, send, log, MODEL_PATCH, rkey);
-      return;
     }
+    const act = msg.action === "reload" ? "navigate" : msg.action;
+    let rprompt = buildRegionNavPrompt(msg.brief, act, arg, navRegion);
+    const fc = vfs.read(arg);
+    if (fc !== undefined) rprompt += `\n\nCONTENTS of ${arg}:\n${fc}`;
+    await runRegion(windowId, msg.brief, navRegion, rprompt, send, log, MODEL_PATCH, rkey);
+    return;
+  }
 
-    // No declared region → full drill-in render (whole body, page cache).
+  // --- Drill-in without a region → full render (whole body, page cache). ---
+  if (isDrill && arg) {
     const key = pageKey(msg.brief, arg);
     if (msg.action !== "reload") {
       const cachedHtml = pageCache.get(key);
@@ -336,7 +340,7 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
     return;
   }
 
-  // --- Region IN-PLACE edit (data-target, not a navigation): no cache. ---
+  // --- Region IN-PLACE edit (data-target, no arg → a state change): no cache. ---
   if (explicitTarget && regionHtml) {
     const prompt = buildRegionPrompt(msg.brief, msg.action, arg, explicitTarget, regionHtml);
     await runRegion(windowId, msg.brief, explicitTarget, prompt, send, log, MODEL_PATCH);

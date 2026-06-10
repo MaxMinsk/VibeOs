@@ -82,6 +82,25 @@ sliders act on change — that's automatic.) Example address bar:
 → local JS. When unsure whether content should feel real and specific, prefer
 `data-action`. Don't attach both a local handler and `data-action` to one element.
 
+**Master-detail / browser apps (email, file browser, notes, chat, music, settings)
+— CRITICAL.** Selecting an item from a list/sidebar updates ONLY the detail/content
+pane, NEVER the whole window. Give the changing pane a stable `id` + `data-region`,
+and put `data-action="open" data-arg="<id>" data-target="<pane-id>"` on EVERY list
+row / sidebar entry / folder / message. (List rows `.vibe-list-row` and sidebar
+items `.vibe-sidebar-item` auto-target their enclosing `[data-region]` even without
+an explicit `data-target`, so at minimum wrap the changing content in
+`<div id="..." data-region>`.) This makes selection instant, cached, and shown with
+a local indicator — re-generating the whole window to show a clicked item is wrong.
+
+```
+<div class="vibe-split">
+  <div class="vibe-list" style="width:280px">
+    <div class="vibe-list-row" data-action="open" data-arg="msg-3" data-target="reading">Re: invoice…</div>
+  </div>
+  <main id="reading" data-region class="vibe-content">…selected message…</main>
+</div>
+```
+
 **Targeted regions (faster — update only part of the app).** When the app has a
 stable shell (window chrome, toolbar, sidebar, menu bar) and a *changing area*
 (a content pane, a tabs body, a preview pane, an inner window in a Windows/desktop

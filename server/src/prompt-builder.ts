@@ -76,6 +76,10 @@ export function buildLaunchWindowPrompt(
     "functional (use local JS for instant interactivity, data-action where it needs",
     "the agent). The OS draws the window frame, so return ONLY the inner content —",
     "no window chrome, no wrapping element, no <!--vibe-* --> trailers.",
+    'If this app browses/selects (folders, files, messages, songs…): wrap the part',
+    'that changes in a stable `<div id="..." data-region>`, and put `data-action`',
+    '`data-arg` `data-target="<that id>"` on the list/sidebar items so navigating',
+    "updates ONLY that pane — never re-render the whole window for a selection.",
   ].join("\n");
 }
 
