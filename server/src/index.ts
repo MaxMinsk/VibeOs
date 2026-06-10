@@ -295,7 +295,10 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
   const navRegion =
     explicitTarget || (isDrill && arg ? defaultRegion(appCache.getLayout(msg.brief)) : "");
   if (navRegion && arg) {
-    const rkey = pageKey(msg.brief, navRegion + "::" + arg);
+    // Normalize dynamic nested-window ids (nwin-3 / wbody-7) so the cache is shared
+    // across window instances — content depends on the destination, not the id.
+    const regionToken = /^(nwin|wbody)-/.test(navRegion) ? "win" : navRegion;
+    const rkey = pageKey(msg.brief, regionToken + "::" + arg);
     if (msg.action !== "reload") {
       const cached = pageCache.get(rkey);
       if (cached) {

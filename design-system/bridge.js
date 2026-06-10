@@ -193,6 +193,7 @@
   // Open a NEW nested window locally, then ask the agent to fill its content
   // (themed as an app of THIS environment — e.g. a Windows-98 program).
   var nwin = 0;
+  var autoBody = 0;
   function buildNestedWindow(title, bodyId) {
     var tpl = document.querySelector("template[data-window-template]");
     var win;
@@ -295,15 +296,27 @@
       e.preventDefault();
       closeMenu();
       var tgt = t.getAttribute("data-target");
-      // Auto-target: a navigation item (list row / sidebar item / [data-nav])
-      // without an explicit target updates its enclosing [data-region] — so a
-      // folder/email/file list browses in place without per-item data-target.
-      if (
-        !tgt &&
-        t.matches(".vibe-list-row, .vibe-sidebar-item, [data-nav]")
-      ) {
-        var reg = t.closest("[data-region][id]");
-        if (reg) tgt = reg.id;
+      // Auto-target: a navigation click without an explicit target updates the
+      // nearest content region — its [data-region], or (inside a nested window)
+      // that window's own body. So folder/email/file lists browse IN PLACE, and a
+      // nested window updates only itself, even without per-item data-target.
+      if (!tgt) {
+        var navVerb = /^(open|navigate|select|goto|show|view|browse|cd|enter)/i.test(
+          t.getAttribute("data-action") || "",
+        );
+        if (t.matches(".vibe-list-row, .vibe-sidebar-item, [data-nav]") || navVerb) {
+          var reg = t.closest("[data-region][id]");
+          if (!reg) {
+            var win = t.closest("[data-window]");
+            if (win) {
+              reg =
+                win.querySelector("[data-region][id]") ||
+                win.querySelector(".vibe-win-body, [data-slot='content'], [data-window-body]");
+              if (reg && !reg.id) reg.id = "wbody-" + ++autoBody;
+            }
+          }
+          if (reg && reg.id) tgt = reg.id;
+        }
       }
       send(t.getAttribute("data-action"), t.getAttribute("data-arg"), tgt);
       return;
