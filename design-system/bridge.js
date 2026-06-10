@@ -487,11 +487,28 @@
     }
   }
 
+  // ---- Slots: a node declares child nodes as [data-node] placeholders; the OS
+  // fills each by generating its content. Fired per-slot, so siblings (e.g. a
+  // desktop's windows) generate IN PARALLEL.
+  function fillSlots() {
+    var slots = document.querySelectorAll("[data-node]:not([data-node-filled])");
+    for (var i = 0; i < slots.length; i++) {
+      var s = slots[i];
+      s.setAttribute("data-node-filled", "");
+      if (!s.id) s.id = "node-" + ++autoBody;
+      if (!s.innerHTML.trim())
+        s.innerHTML =
+          '<div style="padding:14px;color:#888;font-size:12px">Loading…</div>';
+      send("render-node", s.getAttribute("data-node"), s.id);
+    }
+  }
+
   // Commands from the shell.
   window.addEventListener("message", function (e) {
     var msg = e.data || {};
     if (msg.type === "vibe-patch" && typeof msg.html === "string") {
       patchEl(document.getElementById("vibe-root"), msg.html);
+      fillSlots();
     } else if (msg.type === "vibe-patch-region" && typeof msg.html === "string") {
       var el = document.getElementById(msg.target);
       if (el) {
@@ -499,6 +516,7 @@
         var bw = el.closest("[data-window]") || el;
         bw.classList.remove("vibe-busy");
         clearTimeout(bw._vibeBusyT);
+        fillSlots();
       }
       // Region not found (agent renamed/removed it) → ask the OS to fully
       // re-render so we never end up with a stale/empty window.
@@ -509,4 +527,6 @@
         );
     }
   });
+
+  fillSlots(); // fill any slots present in the initial render
 })();

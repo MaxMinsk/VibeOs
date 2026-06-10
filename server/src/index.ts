@@ -274,9 +274,11 @@ async function handle(msg: ClientMessage, send: Send, log: typeof app.log) {
   const arg = d.arg != null ? String(d.arg) : "";
   const isDrill = DRILL_ACTIONS.has(msg.action);
 
-  // --- Launch an app INSIDE this environment (nested window content). ---
-  if (msg.action === "launch-window" && explicitTarget && arg) {
-    const lkey = pageKey(msg.brief, "launch::" + arg);
+  // --- Fill a node/slot: a child node's content (a launched app window, or a
+  //     declared [data-node] slot), themed by this parent environment. Sibling
+  //     slots arrive as separate events → generated in parallel. ---
+  if ((msg.action === "launch-window" || msg.action === "render-node") && explicitTarget && arg) {
+    const lkey = pageKey(msg.brief, "node::" + arg);
     const cached = pageCache.get(lkey);
     if (cached) {
       send({ type: "patch-region", windowId, target: explicitTarget, html: cached });

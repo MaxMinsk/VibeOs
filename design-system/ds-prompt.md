@@ -303,6 +303,14 @@ desktop area. Example (a draggable window on a mini desktop):
 </div>
 ```
 
+**Multiple pre-open windows → fill in parallel (slots).** When a desktop opens with
+several windows already on screen, do NOT write all their contents inline (slow,
+serial). Render only the window FRAMES and leave each body as an empty **slot**:
+`<div class="vibe-win-body" data-node="<app brief>"></div>` (e.g.
+`data-node="My Computer file explorer"`). The OS fills every slot's content
+concurrently — each its own generation, themed for this environment — so the
+desktop appears instantly and the windows populate in parallel.
+
 **Launching apps inside the environment.** To let the user OPEN programs (Start
 menu item, desktop icon, app search result), put `data-launch="<app name>"` (and
 optional `data-launch-title`) on the trigger. The OS then: (1) opens a NEW draggable
