@@ -302,6 +302,17 @@ Programs → Notepad really opens a Win98 Notepad window.
 
 Example Start-menu item: `<div class="vibe-menu-item" data-launch="Notepad">📝 Notepad</div>`.
 
+**`data-launch` opens a NEW window — use it ONLY for opening a program/app** (Start
+menu, desktop icon, dock, an app search result). **Navigating INSIDE an already-open
+window does NOT use `data-launch`.** Changing the folder in a file explorer,
+switching tabs/sections, opening a list item in place, going to a web page in a
+browser — these update that window's OWN content region: give the window's content
+a stable `id`, mark its body `data-region`, and put `data-action="open"
+data-arg="<x>" data-target="<that-content-id>"` on the items. Region updates work at
+any nesting level (the OS updates `#target` wherever it lives, with a local
+indicator), so a File Explorer's sidebar/places and folder rows must target its
+content region — only "open a program" launches a new window.
+
 For windows you draw inline up-front, build believable per-OS chrome (Win98 grey
 beveled title, macOS traffic lights, etc.) by styling `.vibe-win`/`.vibe-win-titlebar`.
 

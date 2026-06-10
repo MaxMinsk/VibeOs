@@ -29,7 +29,16 @@
     var regionHtml = null;
     if (target) {
       var region = document.getElementById(target);
-      if (region) regionHtml = region.innerHTML;
+      if (region) {
+        regionHtml = region.innerHTML;
+        // Local busy indicator on the region's own window (not the whole OS).
+        var bw = region.closest("[data-window]") || region;
+        bw.classList.add("vibe-busy");
+        clearTimeout(bw._vibeBusyT);
+        bw._vibeBusyT = setTimeout(function () {
+          bw.classList.remove("vibe-busy");
+        }, 120000);
+      }
     }
     parent.postMessage(
       {
@@ -465,7 +474,12 @@
       patchEl(document.getElementById("vibe-root"), msg.html);
     } else if (msg.type === "vibe-patch-region" && typeof msg.html === "string") {
       var el = document.getElementById(msg.target);
-      if (el) patchEl(el, msg.html);
+      if (el) {
+        patchEl(el, msg.html);
+        var bw = el.closest("[data-window]") || el;
+        bw.classList.remove("vibe-busy");
+        clearTimeout(bw._vibeBusyT);
+      }
       // Region not found (agent renamed/removed it) → ask the OS to fully
       // re-render so we never end up with a stale/empty window.
       else

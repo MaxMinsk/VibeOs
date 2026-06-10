@@ -119,7 +119,14 @@ export class WindowManager {
     const view = this.views.get(msg.windowId);
     if (!view) return;
     if (msg.type === "status") {
-      if (msg.state === "thinking") view.beginUpdate();
+      if (msg.state === "thinking") {
+        // Skip the OS-window indicator for region updates (shown locally inside).
+        const last = this.lastEvent.get(msg.windowId);
+        const isRegion =
+          last?.type === "event" &&
+          !!(last.detail as { target?: unknown } | undefined)?.target;
+        if (!isRegion) view.beginUpdate();
+      }
       if (msg.state === "error")
         view.showError(msg.message ?? "error", () => this.retry(msg.windowId));
     } else if (msg.type === "chunk") {
@@ -154,7 +161,9 @@ export class WindowManager {
     if (data.type === "vibe-event") {
       const view = this.views.get(data.windowId);
       if (!view) return;
-      view.beginUpdate();
+      // Region-targeted updates show a LOCAL indicator (inside the iframe, on the
+      // affected region/window). Only full-window updates use the OS-window bar.
+      if (!data.event?.target) view.beginUpdate();
       const msg: ClientMessage = {
         type: "event",
         windowId: data.windowId,

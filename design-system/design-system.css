@@ -568,3 +568,24 @@ body {
   height: 14px;
   cursor: nwse-resize;
 }
+
+/* Local busy indicator: a thin progress bar on the region/window being updated. */
+.vibe-busy {
+  position: relative;
+}
+.vibe-busy::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 2px;
+  background: var(--vibe-accent);
+  z-index: 99999;
+  animation: vibe-busybar 1s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes vibe-busybar {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
